@@ -361,9 +361,6 @@ for scenario in scenarios[1:]:
                 subprocess.run(["export HDF5_USE_FILE_LOCKING=FALSE && ncatted -Oh -a _FillValue,lat,d,, " + combined_file], 
                                shell = True, 
                                check = True)
-                subprocess.run(["export HDF5_USE_FILE_LOCKING=FALSE && ncatted -Oh -a _FillValue,time,d,, " + combined_file],  
-                               shell = True, 
-                               check = True)
                 
                 ds               = xr.open_dataset(filename_or_obj = combined_file)
                 time_running_max = ds["time"].values.max()
