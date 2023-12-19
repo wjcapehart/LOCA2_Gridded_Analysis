@@ -363,7 +363,7 @@ for scenario in scenarios[1:]:
                                check = True)
                 
                 ds               = xr.open_dataset(filename_or_obj = combined_file)
-                time_running_max = ds["time"].values.max()
+                time_running_max = ds["year"].values.max()
                 time_running_n   = ds[variable].values.shape
                 print("# Max_Running_Time = " + str(time_running_max) + "  " + str(time_running_n) )                                 
                 
@@ -411,7 +411,7 @@ for scenario in scenarios[1:]:
                    shell = True, 
                    check = True)
     ds               = xr.open_dataset(filename_or_obj = final_merged_file)
-    time_running_max = ds["time"].values.max()
+    time_running_max = ds["year"].values.max()
     time_running_n   = ds[variable].values.shape
     print("#     Max_Ens_Time = " + str(time_running_max) + " " + str(time_running_n) )  
     print("# dimension swapped")
