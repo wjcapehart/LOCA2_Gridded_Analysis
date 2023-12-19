@@ -286,6 +286,8 @@ for scenario in scenarios[1:2]:
             
                 
                 time = ds["time"]
+                lon = ds["lon"]
+                lat = ds["lat"]
                 nt = time.shape[0]
                 nm = 12
                 ny = nt/12
