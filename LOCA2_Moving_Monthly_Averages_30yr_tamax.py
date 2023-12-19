@@ -166,10 +166,10 @@ print(loca2_ensembles_list)
 #
 
     
-for scenario in scenarios[1:2]:
+for scenario in scenarios[1:]:
     print("# ################################################")
     First = True
-    for m in range(1): #range(len(models)-1):
+    for m in range(len(models)-1):
         print("# ------------------------------------------------")
 
         model          =          models[m]
