@@ -112,7 +112,7 @@ model_member_key    = xr.DataArray(model_member_key,
                                               "long_name" : "Model and Member Label",
                                                "comment1" :   "LUT Indexing Starts at 0"})
 
-display(model_member_key)
+print(model_member_key)
 
 #
 ##########################################################
@@ -149,7 +149,7 @@ scenarios            = ["historical",
                             "ssp370", 
                             "ssp585"]
 
-display(loca2_ensembles_list)
+print(loca2_ensembles_list)
 
 #
 ##########################################################
@@ -312,7 +312,7 @@ for scenario in scenarios[1:2]:
                                       attrs   = {"description": "calendar month",
                                                    "long_name": "calendar month"})
                 
-                display("Start Reindexing",os.system("date"))
+                print("Start Reindexing",os.system("date"))
                 
                 multiindex_ds = ds.assign_coords(month =monthdv,
                                                  year  =yeardv
@@ -324,7 +324,7 @@ for scenario in scenarios[1:2]:
                     time="time2d"
                 ).unstack("time2d")
 
-                display("Start Rolling Mean",os.system("date"))
+                print("Start Rolling Mean",os.system("date"))
 
                 
                 rolling_monthly = multiindex_ds[variable].rolling(year   =   30,
@@ -333,7 +333,7 @@ for scenario in scenarios[1:2]:
                 rolling_monthly.expand_dims(dim={"model_member" : 1}) 
                 rolling_monthly["name"] = variable
                 rolling_monthly.attrs["cell_methods"] = cell_method
-                display("Finished Rolling Mean",os.system("date"))
+                print("Finished Rolling Mean",os.system("date"))
 
 
                 outdata = xr.Dataset(data_vars = {variable       :               rolling_monthly,
