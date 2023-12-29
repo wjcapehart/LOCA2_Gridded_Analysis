@@ -29,11 +29,7 @@ import pandas            as pd
 
 import os as os
 
-
-
 import subprocess as subprocess
-
-
 
 def geo_idx(dd, dd_array):
 
@@ -61,6 +57,9 @@ variable    = "tasmax"
 
 tempfile    = "./" + variable + "_tempfile.nc"
 memberfile  = "./" + variable + "_model_member.nc"
+
+local_hdf_string = "export HDF5_USE_FILE_LOCKING=FALSE && "
+local_hdf_string = " "
 
 cell_method    = "time: maximum within days  time: mean within years  time: mean over 30 years "
 cell_methodsdv = "time: mean over months   time: stdev over 30 years "
@@ -261,7 +260,7 @@ for scenario in scenarios[1:]:
                     
                     
 
-                cdo_cat_command = "nohup cdo --no_history -f nc4 -z zip_9  mergetime "
+                cdo_cat_command = "cdo --no_history -f nc4 -z zip_9  mergetime "
 
                 command_aggregate = cdo_cat_command + hist_file + " " + futr_file + " " + tempfile
                 subprocess.run(["rm -fr " + tempfile],                             shell = True, check = True)
@@ -354,21 +353,31 @@ for scenario in scenarios[1:]:
                                                                 "scale_factor":     0.1,
                                                                   "add_offset":     0.0,                                        
                                                                   "_FillValue":  -32767}})
+
+                print("Writing NetCDF Climate File",os.system("date"))
                 
-                subprocess.run(["export HDF5_USE_FILE_LOCKING=FALSE && ncatted -Oh -a _FillValue,lon,d,, " + combined_file], 
+                subprocess.run([local_hdf_string+" ncatted -Oh -a _FillValue,lon,d,, " + combined_file], 
                                shell = True, 
                                check = True)
-                subprocess.run(["export HDF5_USE_FILE_LOCKING=FALSE && ncatted -Oh -a _FillValue,lat,d,, " + combined_file], 
+                subprocess.run([local_hdf_string+" ncatted -Oh -a _FillValue,lat,d,, " + combined_file], 
                                shell = True, 
                                check = True)
-                
+
+                subprocess.run([local_hdf_string + " ncpdq -a year,month,lat,lon " + combined_file + " " + combined_file+".swapped.nc"],
+                                shell = True, 
+                                check = True)      
+                print("Correcting all Dimensions",os.system("date"))
+
+                subprocess.run(["mv -v " + combined_file + ".swapped.nc " + combined_file],
+                                shell = True,  
+                                check = True)                               
                 ds               = xr.open_dataset(filename_or_obj = combined_file)
                 time_running_max = ds["year"].values.max()
                 time_running_n   = ds[variable].values.shape
                 print("# Max_Running_Time = " + str(time_running_max) + "  " + str(time_running_n) )                                 
                 
-            # end check on avaiable variable
-        # end check on on avaiable member
+            # end check on available variable
+        # end check on on available member
             
     #end loop on model
 
@@ -391,23 +400,23 @@ for scenario in scenarios[1:]:
                                engine         =    "h5netcdf", #
                                unlimited_dims = "model_member")  
         
-    cdo_cat_command = "nohup cdo --no_history -f nc4 -z zip_9 cat "
-    nco_cat_command = "nohup ncecat -M -u model_member "
+    cdo_cat_command = " cdo --no_history -f nc4 -z zip_9 cat "
+    nco_cat_command = " ncecat -M -u model_member "
     command_aggregate = cdo_cat_command +combined_wc_files + " " + tempfile    
     print("# Final Aggregation")
     subprocess.run(["rm -fr " + final_merged_file + " " + tempfile + " 2_" + tempfile], 
                    shell = True, 
                    check = True)    
-    subprocess.run(["export HDF5_USE_FILE_LOCKING=FALSE && " + command_aggregate], 
+    subprocess.run([local_hdf_string + command_aggregate], 
                    shell = True, 
                    check = True)
     print("# Files Concatenated")
 
-    subprocess.run(["export HDF5_USE_FILE_LOCKING=FALSE && ncks -C -O -x -v model_member " + tempfile + " " + final_merged_file], 
+    subprocess.run([local_hdf_string+" ncks -C -O -x -v model_member " + tempfile + " " + final_merged_file], 
                    shell = True, 
                    check = True)
     print("# dimension dropped")
-    subprocess.run(["export HDF5_USE_FILE_LOCKING=FALSE && ncks -h -A "+ memberfile + " " + final_merged_file], 
+    subprocess.run([local_hdf_string+" ncks -h -A "+ memberfile + " " + final_merged_file], 
                    shell = True, 
                    check = True)
     ds               = xr.open_dataset(filename_or_obj = final_merged_file)
@@ -431,19 +440,10 @@ print("end processing")
 
 
 
-# # Version History
+# 
 
 # In[ ]:
 
 
-################################################################
-#
-# Loading Version Information
-#
 
-get_ipython().run_line_magic('load_ext', 'version_information')
-get_ipython().run_line_magic('version_information', 'version_information numpy, matplotlib, xarray, pandas, cartopy, metpy')
-
-#
-################################################################
 
