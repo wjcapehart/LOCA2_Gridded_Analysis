@@ -333,7 +333,7 @@ for scenario in scenarios[1:]:
                                                                                                how =  "all") 
                 rolling_monthly.expand_dims(dim={"model_member" : 1}) 
                 rolling_monthly.attrs["cell_methods"] = cell_method
-                del rolling_monthly.attrs["coordinates"]
+                #del rolling_monthly.attrs["coordinates"]
                 print("Finished Rolling Mean",os.system("date"))
 
 
