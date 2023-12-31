@@ -332,8 +332,8 @@ for scenario in scenarios[1:]:
                                                                   center = True).mean().dropna(dim = "year",
                                                                                                how =  "all") 
                 rolling_monthly.expand_dims(dim={"model_member" : 1}) 
-                rolling_monthly["name"] = variable
                 rolling_monthly.attrs["cell_methods"] = cell_method
+                del rolling_monthly.attrs["coordinates"]
                 print("Finished Rolling Mean",os.system("date"))
 
 
@@ -342,6 +342,8 @@ for scenario in scenarios[1:]:
                                                   "lon"          :                           lon,
                                                   "model_member" : model_member.astype(np.int16)},
                                      attrs     = {"scenario"     :                      scenario})
+
+                
 
 
                 outdata.to_netcdf(path           =  combined_file, 
@@ -363,7 +365,7 @@ for scenario in scenarios[1:]:
                                shell = True, 
                                check = True)
 
-                subprocess.run([local_hdf_string + " ncpdq -a year,month,lat,lon " + combined_file + " " + combined_file+".swapped.nc"],
+                subprocess.run([local_hdf_string + " ncpdq -h -a year,month,lat,lon " + combined_file + " " + combined_file+".swapped.nc"],
                                 shell = True, 
                                 check = True)      
                 print("Correcting all Dimensions",os.system("date"))
@@ -391,8 +393,7 @@ for scenario in scenarios[1:]:
                                           "code_to_name_lookup_table":  model_member_key.values.tolist(),
                                           "comment1"    : "LUT Indexing Starts at 0"})
 
-    model_member_ds = xr.Dataset(data_vars = {"model_member" : model_member},
-                                 attrs     = {"scenario"     :     scenario})
+    model_member_ds = xr.Dataset(data_vars = {"model_member" : model_member})
     
     model_member_ds.to_netcdf(path            =   memberfile, 
                                mode           =           'w', 
@@ -401,7 +402,7 @@ for scenario in scenarios[1:]:
                                unlimited_dims = "model_member")  
         
     cdo_cat_command = " cdo --no_history -f nc4 -z zip_9 cat "
-    nco_cat_command = " ncecat -M -u model_member "
+    nco_cat_command = " ncecat -h -M -u model_member "
     command_aggregate = cdo_cat_command +combined_wc_files + " " + tempfile    
     print("# Final Aggregation")
     subprocess.run(["rm -fr " + final_merged_file + " " + tempfile + " 2_" + tempfile], 
@@ -412,7 +413,7 @@ for scenario in scenarios[1:]:
                    check = True)
     print("# Files Concatenated")
 
-    subprocess.run([local_hdf_string+" ncks -C -O -x -v model_member " + tempfile + " " + final_merged_file], 
+    subprocess.run([local_hdf_string+" ncks -h -C -O -x -v model_member " + tempfile + " " + final_merged_file], 
                    shell = True, 
                    check = True)
     print("# dimension dropped")
