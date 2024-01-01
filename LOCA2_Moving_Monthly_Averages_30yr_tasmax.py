@@ -358,14 +358,14 @@ for scenario in scenarios[1:]:
 
                 print("Writing NetCDF Climate File",os.system("date"))
                 
-                subprocess.run([local_hdf_string+" ncatted -Oh -a _FillValue,lon,d,, " + combined_file], 
+                subprocess.run([local_hdf_string+" ncatted --4 -Oh -a _FillValue,lon,d,, " + combined_file], 
                                shell = True, 
                                check = True)
-                subprocess.run([local_hdf_string+" ncatted -Oh -a _FillValue,lat,d,, " + combined_file], 
+                subprocess.run([local_hdf_string+" ncatted --4 -Oh -a _FillValue,lat,d,, " + combined_file], 
                                shell = True, 
                                check = True)
 
-                subprocess.run([local_hdf_string + " ncpdq -h -a year,month,lat,lon " + combined_file + " " + combined_file+".swapped.nc"],
+                subprocess.run([local_hdf_string + " ncpdq --4 -h -a year,month,lat,lon " + combined_file + " " + combined_file+".swapped.nc"],
                                 shell = True, 
                                 check = True)      
                 print("Correcting all Dimensions",os.system("date"))
@@ -402,8 +402,8 @@ for scenario in scenarios[1:]:
                                unlimited_dims = "model_member")  
         
     cdo_cat_command = " cdo --no_history -f nc4 -z zip_9 cat "
-    nco_cat_command = " ncecat -h -M -u model_member "
-    command_aggregate = cdo_cat_command +combined_wc_files + " " + tempfile    
+    nco_cat_command = " ncrcat --4 --hst --dfl_lvl 9  "
+    command_aggregate = nco_cat_command +combined_wc_files + " " + final_merged_file    
     print("# Final Aggregation")
     subprocess.run(["rm -fr " + final_merged_file + " " + tempfile + " 2_" + tempfile], 
                    shell = True, 
@@ -413,13 +413,13 @@ for scenario in scenarios[1:]:
                    check = True)
     print("# Files Concatenated")
 
-    subprocess.run([local_hdf_string+" ncks -h -C -O -x -v model_member " + tempfile + " " + final_merged_file], 
-                   shell = True, 
-                   check = True)
-    print("# dimension dropped")
-    subprocess.run([local_hdf_string+" ncks -h -A "+ memberfile + " " + final_merged_file], 
-                   shell = True, 
-                   check = True)
+    #subprocess.run([local_hdf_string+" ncks -h -C -O -x -v model_member " + tempfile + " " + final_merged_file], 
+    #               shell = True, 
+    #               check = True)
+    #print("# dimension dropped")
+    #subprocess.run([local_hdf_string+" ncks -h -A "+ memberfile + " " + final_merged_file], 
+    #               shell = True, 
+    #               check = True)
     ds               = xr.open_dataset(filename_or_obj = final_merged_file)
     time_running_max = ds["year"].values.max()
     time_running_n   = ds[variable].values.shape
