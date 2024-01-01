@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # LOCA2 30-year Moving Mean Annual Max Temps.
+# # LOCA2 30-year Moving Mean Annual Min Temps.
 
 # In[ ]:
 
@@ -53,7 +53,7 @@ def geo_idx(dd, dd_array):
 Original_File_Prefix = "LOCA2-CONUS-MONTHLY_MEAN"
 Final_File_Prefix    = "LOCA2-CONUS-ANNUAL30YRUNMEAN_MONTHLYMEAN"
 
-variable    = "tasmax"
+variable    = "tasmin"
 
 tempfile    = "./" + variable + "_tempfile.nc"
 memberfile  = "./" + variable + "_model_member.nc"
@@ -61,7 +61,7 @@ memberfile  = "./" + variable + "_model_member.nc"
 local_hdf_string = "export HDF5_USE_FILE_LOCKING=FALSE && "
 local_hdf_string = " "
 
-cell_method    = "time: maximum within days  time: mean within months  time: mean over 30 years "
+cell_method    = "time: minimum within days  time: mean within months  time: mean over 30 years "
 cell_methodsdv = "time: mean over months   time: stdev over 30 years "
 
 target_rank =  "1"
