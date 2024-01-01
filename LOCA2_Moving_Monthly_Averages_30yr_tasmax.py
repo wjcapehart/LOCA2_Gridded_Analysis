@@ -358,14 +358,14 @@ for scenario in scenarios[1:]:
 
                 print("Writing NetCDF Climate File",os.system("date"))
                 
-                subprocess.run([local_hdf_string+" ncatted --4 -Oh -a _FillValue,lon,d,, " + combined_file], 
+                subprocess.run([local_hdf_string+" ncatted -Oh -a _FillValue,lon,d,, " + combined_file], 
                                shell = True, 
                                check = True)
-                subprocess.run([local_hdf_string+" ncatted --4 -Oh -a _FillValue,lat,d,, " + combined_file], 
+                subprocess.run([local_hdf_string+" ncatted  -Oh -a _FillValue,lat,d,, " + combined_file], 
                                shell = True, 
                                check = True)
 
-                subprocess.run([local_hdf_string + " ncpdq --4 -h -a year,month,lat,lon " + combined_file + " " + combined_file+".swapped.nc"],
+                subprocess.run([local_hdf_string + " ncpdq  -h -a year,month,lat,lon " + combined_file + " " + combined_file+".swapped.nc"],
                                 shell = True, 
                                 check = True)      
                 print("Correcting all Dimensions",os.system("date"))
