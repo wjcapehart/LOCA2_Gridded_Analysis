@@ -59,7 +59,7 @@ remove(nclimdiv_file)
 
 all_climatezones = unique(NCEI_nClimDiv_LUT$climdiv)
 
-for (target_climate_zone in all_climatezones) {
+for (target_climate_zone in all_climatezones[1]) {
   
   loca_metadata = NCEI_nClimDiv_LUT |>
     filter(climdiv == target_climate_zone)
@@ -88,8 +88,15 @@ for (target_climate_zone in all_climatezones) {
                          sep = "")
   
   load(url(loca_file_name),
-       verbose = FALSE)
+       verbose = TRUE)
+  
+  loca2_monthly$Division = target_climate_zone 
+  
+  loca2_monthly$Division = factor(x = loca2_monthly$Division,
+                                  levels = NCEI_nClimDiv_LUT$climdiv)
   closeAllConnections()
+  
+  
   
   
   loca2_monthly = loca2_monthly |> 
@@ -297,11 +304,11 @@ for (target_climate_zone in all_climatezones) {
       
       water_budget$Time             = thorntwaite_inputs$Time
       water_budget$Snowpack         = round(water_budget$Snowpack,5)
-      water_budget$Scenario         = unique(local_loca2_monthly$Scenario)
-      water_budget$Model            = unique(local_loca2_monthly$Model)
-      water_budget$Member           = unique(local_loca2_monthly$Member)
-      water_budget$Percentile       = unique(local_loca2_monthly$Percentile)
-      water_budget$Climate_Division = unique(local_loca2_monthly$climdiv)
+      water_budget$Scenario         = thorntwaite_inputs$Scenario
+      water_budget$Model            = thorntwaite_inputs$Model
+      water_budget$Member           = thorntwaite_inputs$Member
+      water_budget$Percentile       = thorntwaite_inputs$Percentile
+      water_budget$Climate_Division = thorntwaite_inputs$climdiv
       
       
       
@@ -332,6 +339,7 @@ for (target_climate_zone in all_climatezones) {
       
       if (first) {
         LOCA2_Water_Budget = water_budget
+        first = FALSE
       } else {
         LOCA2_Water_Budget = rbind(LOCA2_Water_Budget,
                                    water_budget)
