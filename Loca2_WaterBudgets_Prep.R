@@ -343,7 +343,7 @@ for (target_climate_zone in all_climatezones) {
   
   
   
-  loca_file_name = str_c("./LOCA2_V1_nCLIMDIV_THORNTHWAITE_" , 
+  loca_file_name = str_c("./LOCA2_V1_LOCA2_THORNTHWAITE_" , 
                          target_climate_zone ,
                          ".RData", 
                          sep = "")
