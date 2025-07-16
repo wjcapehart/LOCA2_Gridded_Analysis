@@ -154,3 +154,4 @@ LOCA2-CONUS-MONTHLY_MEAN___tasmax___GFDL-ESM4.r1i1p1f1___ssp585.nc
 LOCA2-CONUS-MONTHLY_MEAN___tasmax___GFDL-ESM4.r1i1p1f1___historical-ssp585.nc
 LOCA2-CONUS-MONTHLY_MEAN___tasmax___GFDL-ESM4.r1i1p1f1___historical.nc
 *.nc
+.Rproj.user

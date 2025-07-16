@@ -1,0 +1,670 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+# Libraries
+
+  # Tidyverse resources
+
+library(package = "tidyverse") # Multiple Tidyverse Resources
+library(package = "lubridate") # Date-Time Control
+
+library(package = "showtext")
+library(package = "sysfonts")
+
+library(package = "svglite")
+
+library(package = "extRemes") # NCEI  Data Retrieval Package
+
+library(package = "ClimClass")
+
+library(package = "showtext")
+
+font_add_google(name   = "Open Sans", 
+                family = "OpenSans") 
+    
+showtext::showtext_auto()
+showtext::showtext_opts(dpi = 300)
+
+    
+scenario_color = c(       "blue","forestgreen", "goldenrod","firebrick")
+scenario_fill  = c("deepskyblue",      "green",      "gold",      "red")
+
+```
+
+
+
+
+```{r}
+# User Modification Area
+
+# Climate Division Selection
+  
+target_climate_zone = "3902"
+  
+# Spatial Aggregation Statistic
+#   MEAN, P000, P025, P050, P075, P100
+  
+target_aggregation_statistic = "MEAN"
+  
+# Target Return Interval
+  
+target_return_interval = 100
+
+# Time Settings
+  
+period_length = 30
+  
+# "Historical" and "Future" Period References
+
+historical_period_end = 2014
+  
+future_period_center  = 2050
+#    future_period_center  = 2099-14
+
+# Derived Time Parameters
+  
+historical_period_start = historical_period_end - (period_length - 1)
+    
+future_period_end       = future_period_center + floor((period_length)/2.)
+future_period_start     = future_period_center - floor((period_length)/2.)+1
+    
+#    future_period_end = 2099
+future_period_start = future_period_end - period_length - 1
+
+
+#    future_period_end   = 2099
+future_period_start = future_period_end - period_length - 1
+
+# future_period_end   = 2050+15
+# future_period_start = 2050-14
+
+
+remove(future_period_center)
+
+
+```
+
+
+
+```{r}
+historical_period_string = str_c("(",
+                                 historical_period_start,
+                                 "-",
+                                 historical_period_end,
+                                 ")", 
+                                 sep="")
+
+historical_date_range = c(as.Date(str_c(historical_period_start, "-01-01", sep="")),
+                          as.Date(str_c(  historical_period_end, "-01-01", sep="")))
+
+future_period_string     = str_c("(",
+                                 future_period_start,
+                                 "-",
+                                 future_period_end,
+                                 ")", 
+                                 sep="")
+
+future_date_range = c(as.Date(str_c(future_period_start, "-01-01", sep="")),
+                      as.Date(str_c(  future_period_end, "-01-01", sep="")))
+```
+
+
+
+```{r}
+
+# Pull the Metadata for the Climate Divisions
+
+climdiv_metadata_file = str_c("https://kyrill.ias.sdsmt.edu:8443/thredds/fileServer/" , 
+                       "LOCA2/" ,
+                       "Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/" ,
+                       "NCEI_nClimDiv_LUT.RData", 
+                       sep = "")
+
+load(url(climdiv_metadata_file),
+     verbose = TRUE)
+closeAllConnections()
+
+# Pull the nclimdiv data
+
+nclimdiv_file = str_c("https://kyrill.ias.sdsmt.edu:8443/thredds/fileServer/" , 
+                       "CLASS_Examples/" ,
+                       "nCLIMDIV.Rdata", 
+                       sep = "")
+
+load(url(nclimdiv_file),
+     verbose = TRUE)  
+closeAllConnections()
+
+remove(nCLIMDIV_LUT)
+remove(climdiv_metadata_file)
+remove(nclimdiv_file)
+
+nCLIMDIV = nCLIMDIV |>
+  rename("climdiv"    = Full_Zone_Code,
+         "Time"       = Date,
+         "tasmax"     = TMAX,
+         "tasavg"     = TMPC,
+         "tasmin"     = TMIN,
+         "pr"         = PCPN) |> 
+  mutate("Year"       =  year(x = Time),
+         "Month"      = month(x = Time),
+         "Scenario"   = "nClimDiv",
+         "Percentile" ="Mean",
+         "Model"      = "NCEI",
+         "Member"     = "") |>
+  select("Scenario",
+         "Model",
+         "Member",
+         "Percentile",
+         "Year",
+         "Month",
+         "climdiv",
+         "Time",
+         "tasmax",
+         "tasavg",
+         "tasmin",
+         "pr") |>
+  filter((Year >= 1950) & (Year < 2025))
+
+
+
+
+```
+
+```{r}
+
+
+# Crack our LOCA File for our climate zone
+
+
+loca_file_name = str_c("https://kyrill.ias.sdsmt.edu:8443/thredds/fileServer/" , 
+                       "LOCA2/" ,
+                       "Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/" ,
+                       "R_Monthly_Files/LOCA2_V1_nCLIMDIV_MONTHLY_" , 
+                       target_climate_zone ,
+                       ".RData", 
+                       sep = "")
+
+load(url(loca_file_name),
+     verbose = TRUE)
+closeAllConnections()
+
+
+loca2_monthly = loca2_monthly |> 
+  filter(Percentile == target_aggregation_statistic) |>
+  mutate("tasavg" = (tasmax + tasmin)/2)  |>
+  rename("climdiv"  = "Division")     |>
+  select("Scenario",
+         "Model",
+         "Member",
+         "Percentile",
+         "Year",
+         "Month",
+         "climdiv",
+         "Time",
+         "tasmax",
+         "tasavg",
+         "tasmin",
+         "pr")
+
+loca2_annual = loca2_monthly |>
+  group_by(Scenario,
+           Model,
+           Member,
+           Percentile,
+           Year,
+           climdiv) |>
+  summarise(Time   = mean(Time),
+            tasmin = mean(tasmin),
+            tasavg = mean(tasavg),
+            tasmax = mean(tasmax),
+            pr     = sum(pr)) |>
+  ungroup()
+
+remove(loca_file_name)
+
+
+# Localize Aggregate Files
+
+
+loca_metadata = NCEI_nClimDiv_LUT |>
+  filter(climdiv == target_climate_zone)
+
+nclimdiv_monthly = nCLIMDIV |>
+  filter(climdiv == target_climate_zone)
+
+nclimdiv_annual = nclimdiv_monthly |>
+  group_by(Scenario,
+           Model,
+           Member,
+           Percentile,
+           Year,
+           climdiv) |>
+    summarise(Time   = mean(Time),
+              tasmax = mean(tasmax),
+              tasavg = mean(tasavg),
+              pr = sum(pr))
+
+
+target_climate_name = str_c(unique(loca_metadata$climdiv_name), 
+                            " Climate Division, ", 
+                            unique(loca_metadata$climdiv_state_name),
+                            " (",
+                            unique(loca_metadata$climdiv),
+                            ")", 
+                            sep = "")
+
+print(target_climate_name)
+```
+
+
+```{r}
+# Get Model Values
+
+Models    = unique(loca2_annual$Model)
+Scenarios = unique(loca2_annual$Scenario)
+
+
+```
+
+
+---
+
+```{r}
+
+
+loca2_annual_ptiles = loca2_annual |>
+  group_by(Scenario,
+           Percentile,
+           Year,
+           climdiv) |>
+  summarise(Time   = mean(Time),
+            tasavg_100 =      max(x = tasavg),
+            tasavg_095 = quantile(x = tasavg, probs = 0.95),
+            tasavg_075 = quantile(x = tasavg, probs = 0.75),
+            tasavg_050 = quantile(x = tasavg, probs = 0.50),
+            tasavg_025 = quantile(x = tasavg, probs = 0.25),
+            tasavg_005 = quantile(x = tasavg, probs = 0.05),
+            tasavg_000 =      min(x = tasavg),
+            tasavg_avg =     mean(x = tasavg),
+            tasavg_std =       sd(x = tasavg),
+            pr_100     =      max(x =     pr),
+            pr_095     = quantile(x =     pr, probs = 0.95),
+            pr_075     = quantile(x =     pr, probs = 0.75),
+            pr_050     = quantile(x =     pr, probs = 0.50),
+            pr_025     = quantile(x =     pr, probs = 0.25),
+            pr_005     = quantile(x =     pr, probs = 0.05),
+            pr_000     =      max(x =     pr),
+            pr_avg     =     mean(x =     pr),
+            pr_std     =       sd(x =     pr)) |>
+  ungroup()
+
+loca2_monthly_ptiles = loca2_monthly |>
+  group_by(Scenario,
+           Percentile,
+           Month,
+           Year,
+           climdiv) |>
+  summarise(Time       = mean(Time),
+            tasavg_100 =      max(x = tasavg),
+            tasavg_095 = quantile(x = tasavg, probs = 0.95),
+            tasavg_075 = quantile(x = tasavg, probs = 0.75),
+            tasavg_050 = quantile(x = tasavg, probs = 0.50),
+            tasavg_025 = quantile(x = tasavg, probs = 0.25),
+            tasavg_005 = quantile(x = tasavg, probs = 0.05),
+            tasavg_000 =      min(x = tasavg),
+            tasavg_avg =     mean(x = tasavg),
+            tasavg_std =       sd(x = tasavg),
+            pr_100     =      max(x =     pr),
+            pr_095     = quantile(x =     pr, probs = 0.95),
+            pr_075     = quantile(x =     pr, probs = 0.75),
+            pr_050     = quantile(x =     pr, probs = 0.50),
+            pr_025     = quantile(x =     pr, probs = 0.25),
+            pr_005     = quantile(x =     pr, probs = 0.05),
+            pr_000     =      max(x =     pr),
+            pr_avg     =     mean(x =     pr),
+            pr_std     =       sd(x =     pr)) |>
+  ungroup()
+
+
+```
+
+```{r}
+
+
+
+ggplot(data = loca2_annual_ptiles) +
+  aes(x     = Time,
+      y     = tasavg_avg,
+      color = Scenario,
+      fill  = Scenario) +
+  theme_bw() +
+  theme(legend.title  = element_text(colour = "#002554", family = "OpenSans")) +
+  theme(legend.text   = element_text(colour = "#002554", family = "OpenSans")) +
+  theme(legend.title  = element_text(colour = "#002554", family = "OpenSans")) +
+  theme(plot.title    = element_text(colour = "#002554", family = "OpenSans")) +
+  theme(plot.subtitle = element_text(colour = "#002554", family = "OpenSans")) +
+  theme(plot.caption  = element_text(colour = "#002554", family = "OpenSans")) +
+
+  theme(axis.title.x = element_text(colour = "#002554", family = "OpenSans")) +
+  theme(axis.title.y = element_text(colour = "#002554", family = "OpenSans")) +
+  theme(axis.text.x  = element_text(colour = "#002554", family = "OpenSans")) +
+  theme(axis.text.y  = element_text(colour = "#002554", family = "OpenSans")) +
+  theme(axis.line    = element_line(colour = "#002554"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border     = element_blank(),
+        panel.background = element_blank()) +
+  
+  geom_line() +
+  geom_line(data    =  nclimdiv_annual,
+            mapping = aes(x = Time,
+                          y = tasavg))   +
+  geom_ribbon(mapping = aes(ymax = tasavg_095,
+                            ymin = tasavg_005),
+              alpha   = 0.1,
+              color = FALSE) +  
+  geom_ribbon(mapping = aes(ymax = tasavg_075,
+                            ymin = tasavg_025),
+              alpha   = 0.2,
+              color = FALSE)  +
+  
+  ggtitle(label    = "CMIP6-LOCA2 Temperatures ",
+            subtitle = target_climate_name) + 
+    
+  labs(caption = str_c("Solid Lines are the Cross-Ensemble Mean; ",
+                       "Shaded Areas are the IQR & Central 90%\n",
+                       "Climate Divisions are Spatially Aggregated by ",
+                       str_to_title(target_aggregation_statistic),
+                       str = "")) +
+  scale_fill_manual(  values = c(scenario_color,"grey")) + 
+  scale_colour_manual(values = c(scenario_color,"black")) +    
+  ylab(label = "Mean Annual Temperature (°C)") +
+  scale_x_date(breaks = seq(from = as.Date("1950-01-01"), 
+                            to   = as.Date("2100-01-01"), 
+                            by   = "10 year"),
+               date_labels = "%Y")
+
+```
+
+```{r}
+
+
+ggplot(data = loca2_annual_ptiles) +
+  aes(x     = Time,
+      y     = pr_avg,
+      color = Scenario,
+      fill  = Scenario) +
+  theme_bw() +
+      theme(legend.title  = element_text(colour = "#002554", family = "OpenSans")) +
+    theme(legend.text   = element_text(colour = "#002554", family = "OpenSans")) +
+    theme(legend.title  = element_text(colour = "#002554", family = "OpenSans")) +
+    theme(plot.title    = element_text(colour = "#002554", family = "OpenSans")) +
+    theme(plot.subtitle = element_text(colour = "#002554", family = "OpenSans")) +
+    theme(plot.caption  = element_text(colour = "#002554", family = "OpenSans")) +
+
+    theme(axis.title.x = element_text(colour = "#002554", family = "OpenSans")) +
+    theme(axis.title.y = element_text(colour = "#002554", family = "OpenSans")) +
+    theme(axis.text.x  = element_text(colour = "#002554", family = "OpenSans")) +
+    theme(axis.text.y  = element_text(colour = "#002554", family = "OpenSans")) +
+    theme(axis.line    = element_line(colour = "#002554"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.border     = element_blank(),
+          panel.background = element_blank()) +
+  
+  scale_fill_manual(  values = c(scenario_color,"grey")) + 
+  scale_colour_manual(values = c(scenario_color,"black")) +
+  
+  geom_line() +
+  geom_line(data    =  nclimdiv_annual,
+          mapping = aes(x = Time,
+                        y = pr))   +
+  geom_ribbon(mapping = aes(ymax = pr_095,
+                            ymin = pr_005),
+              alpha   = 0.1,
+              color = FALSE) +  
+  geom_ribbon(mapping = aes(ymax = pr_075,
+                            ymin = pr_025),
+              alpha   = 0.2,
+              color = FALSE)  +
+  
+  ggtitle(label    = "CMIP6-LOCA2 Precipitation ",
+            subtitle = target_climate_name) + 
+  labs(caption = str_c("Solid Lines are the Cross-Ensemble Mean; ",
+                       "Shaded Areas are the IQR & Central 90%\n",
+                       "Climate Divisions are Spatially Aggregated by ",
+                       str_to_title(target_aggregation_statistic),
+                       str = "")) +
+  ylab(label = "Mean Precipitation (mm)") +
+  scale_x_date(breaks = seq(from = as.Date("1950-01-01"), 
+                            to   = as.Date("2100-01-01"), 
+                            by   = "10 year"),
+               date_labels = "%Y")
+
+```
+
+
+```{r}
+
+# ClimClass Time Series
+first = TRUE
+
+for (model in Models) {
+  
+  print(model)
+
+  local_loca2_monthly = loca2_monthly |>
+    filter(Model == model)
+  
+
+  Local_Scenarios = unique(local_loca2_monthly$Scenario)
+  
+  for (scenario in Local_Scenarios[2:length(Local_Scenarios)]) { 
+    print(str_c("  - ",scenario))
+    thorntwaite_inputs = local_loca2_monthly |>
+       filter((Scenario == "Historical") | (Scenario == scenario)) |>
+       arrange(Time) |>
+       rename("year"  = Year,
+              "month" = Month,
+              "Tn"    = tasmin,
+              "Tm"    = tasavg,
+              "Tx"    = tasmax,
+              "P"     = pr)
+    thorntwaite_budget_raw = thornthwaite(series   = thorntwaite_inputs,
+                 latitude = loca_metadata$climdiv_mean_latitude,
+                 TAW      = loca_metadata$climdiv_mean_mass_content_of_water_in_soil,
+                 snow.init = 0.)
+    
+        # Precipitation
+    water_budget = t( as_tibble(thorntwaite_budget_raw$W_balance$Precipitation) )
+    colnames(water_budget) = str_c(1:12)
+    water_budget = water_budget %>%
+      as.data.frame %>% 
+      rownames_to_column(.,
+                         var = 'year')
+    water_budget$Variable = "Precipitation"
+    
+    #Et0
+    raw_wb2 = t( as_tibble(thorntwaite_budget_raw$W_balance$Et0) )
+    colnames(raw_wb2) = str_c(1:12)
+    raw_wb2 = raw_wb2 %>%
+      as.data.frame %>% 
+      rownames_to_column(.,
+                         var = 'year')
+    raw_wb2$Variable = "Potential_Evap"
+    
+    water_budget = rbind(water_budget,raw_wb2)
+    remove(raw_wb2)
+    
+    #Storage
+    raw_wb2           = t( as_tibble(thorntwaite_budget_raw$W_balance$Storage) )
+    colnames(raw_wb2) = str_c(1:12)
+    raw_wb2 = raw_wb2 %>%
+      as.data.frame %>% 
+      rownames_to_column(.,
+                         var = 'year')
+    raw_wb2$Variable = "Storage"
+    
+    water_budget = rbind(water_budget,raw_wb2)  
+    remove(raw_wb2)
+    
+    #'Prec. - PotEvap.'
+    raw_wb2 = t( as_tibble(thorntwaite_budget_raw$W_balance$'Prec. - Evap.') )
+    colnames(raw_wb2) = str_c(1:12)
+    raw_wb2 = raw_wb2 %>%
+      as.data.frame %>% 
+      rownames_to_column(.,
+                         var = 'year')
+    raw_wb2$Variable = "Prec_m_PE"
+    
+    water_budget = rbind(water_budget,raw_wb2)  
+    remove(raw_wb2)
+    
+    #Deficit
+    raw_wb2 = t( as_tibble(thorntwaite_budget_raw$W_balance$Deficit) )
+    colnames(raw_wb2) = str_c(1:12)
+    raw_wb2 = raw_wb2 %>%
+      as.data.frame %>% 
+      rownames_to_column(.,
+                         var = 'year')
+    raw_wb2$Variable = "Deficit"
+    
+    water_budget = rbind(water_budget,raw_wb2)
+    remove(raw_wb2)
+    
+    #Surplus
+    raw_wb2 = t( as_tibble(thorntwaite_budget_raw$W_balance$Surplus) )
+    colnames(raw_wb2) = str_c(1:12)
+    raw_wb2 = raw_wb2 %>%
+      as.data.frame %>% 
+      rownames_to_column(.,
+                         var = 'year')
+    raw_wb2$Variable = "Surplus"
+    
+    water_budget = rbind(water_budget, raw_wb2)
+    remove(raw_wb2)
+    
+    water_budget = gather(data  = water_budget,
+                          key   = month,
+                          value = "value",
+                          str_c(1:12))
+    
+    water_budget$Date = as.Date(str_c(water_budget$year,
+                                      "-",
+                                      water_budget$month,
+                                      "-15",
+                                      sep = ""))
+    
+    water_budget = spread(data = water_budget,
+                          key  = "Variable",
+                          value = "value")
+    
+    water_budget = water_budget %>% arrange(Date)
+    
+    # finish the budget by critical parameters
+    
+    # calculate evapotransporation
+    water_budget = water_budget %>% 
+      mutate(Evaporation = Potential_Evap - Deficit)
+    
+    # calculate precipitation - true evaporation
+    water_budget = water_budget %>% 
+      mutate(Prec_m_Evap = Precipitation - Evaporation)
+    
+
+    
+    # calculate recharge by calculating the increase in soil storage from rainfall
+    water_budget = water_budget %>% 
+      mutate(Recharge = c(NA, diff(x = Storage, 
+                                   lag = 1))) %>% 
+      mutate(Recharge = ifelse(test = Recharge>0, 
+                               yes  = Recharge, 
+                               no   = 0))
+    
+    # separate recharge from surplus in teh water budget
+    water_budget = water_budget %>% 
+      mutate(Surplus = Surplus - Recharge)  %>% 
+      mutate(Surplus = ifelse(test = Surplus>0, 
+                              yes  = Surplus, 
+                              no   = 0))
+    
+    # calculate recharge by calculating the increase in soil storage from rainfall
+    water_budget = water_budget %>% 
+      mutate(Snowpack = Prec_m_Evap - Recharge - Surplus)  %>% 
+      mutate(Snowpack = ifelse(test = Snowpack>0, 
+                               yes  = Snowpack, 
+                               no   = 0))  
+    
+    # repair precip-PE (seems to be a typo in the original ClimClass Code)
+    water_budget = water_budget %>% 
+      mutate(Prec_m_PE = Precipitation - Potential_Evap)    
+    
+    
+    water_budget$Temp_Avg = round(thorntwaite_inputs$Tm[1:length(water_budget$Precipitation)],2)
+    water_budget$Temp_Max = round(thorntwaite_inputs$Tx[1:length(water_budget$Precipitation)],2)
+    water_budget$Temp_Min = round(thorntwaite_inputs$Tn[1:length(water_budget$Precipitation)],2)
+
+    water_budget$Time             = thorntwaite_inputs$Time
+    water_budget$Snowpack         = round(water_budget$Snowpack,5)
+    water_budget$Scenario         = unique(local_loca2_monthly$Scenario)
+    water_budget$Model            = unique(local_loca2_monthly$Model)
+    water_budget$Member           = unique(local_loca2_monthly$Member)
+    water_budget$Percentile       = unique(local_loca2_monthly$Percentile)
+    water_budget$Climate_Division = unique(local_loca2_monthly$climdiv)
+    
+    
+    
+    water_budget = water_budget %>% select(Scenario,
+                                           Model,
+                                           Member,
+                                           Percentile,
+                                           Time,
+                                           Climate_Division,
+                                           Temp_Min,
+                                           Temp_Avg,
+                                           Temp_Max,
+                                           Precipitation,
+                                           Potential_Evap,
+                                           Evaporation,
+                                           Deficit,
+                                           Storage,
+                                           Snowpack,
+                                           Recharge,
+                                           Surplus,
+                                           Prec_m_PE,
+                                           Prec_m_Evap)
+    
+    if (scenario != Scenarios[2]) {
+      water_budget = water_budget |>
+         filter(Scenario != "Historical")
+    }
+    
+    if (first) {
+        LOCA2_Water_Budget = water_budget
+    } else {
+        LOCA2_Water_Budget = rbind(LOCA2_Water_Budget,
+                                   water_budget)
+      
+    }
+  }
+    
+}
+
+
+
+loca_file_name = str_c("./LOCA2_V1_nCLIMDIV_THORNTHWAITE_" , 
+                       target_climate_zone ,
+                       ".RData", 
+                       sep = "")
+
+
+save(LOCA2_Water_Budget, file = loca_file_name)
+closeAllConnections()
+
+```
+

@@ -1,0 +1,355 @@
+
+# Libraries
+
+# Tidyverse resources
+
+library(package = "tidyverse") # Multiple Tidyverse Resources
+library(package = "lubridate") # Date-Time Control
+
+
+library(package = "ClimClass")
+
+
+
+# User Modification Area
+
+# Climate Division Selection
+
+target_climate_zone = "3902"
+
+# Spatial Aggregation Statistic
+#   MEAN, P000, P025, P050, P075, P100
+
+target_aggregation_statistic = "MEAN"
+
+
+# Pull the Metadata for the Climate Divisions
+
+climdiv_metadata_file = str_c("https://kyrill.ias.sdsmt.edu:8443/thredds/fileServer/" , 
+                              "LOCA2/" ,
+                              "Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/" ,
+                              "NCEI_nClimDiv_LUT.RData", 
+                              sep = "")
+
+load(url(climdiv_metadata_file),
+     verbose = TRUE)
+closeAllConnections()
+
+# Pull the nclimdiv data
+
+nclimdiv_file = str_c("https://kyrill.ias.sdsmt.edu:8443/thredds/fileServer/" , 
+                      "CLASS_Examples/" ,
+                      "nCLIMDIV.Rdata", 
+                      sep = "")
+
+load(url(nclimdiv_file),
+     verbose = TRUE)  
+closeAllConnections()
+
+remove(nCLIMDIV_LUT)
+remove(nCLIMDIV)
+remove(climdiv_metadata_file)
+remove(nclimdiv_file)
+
+
+
+
+
+
+
+all_climatezones = unique(NCEI_nClimDiv_LUT$climdiv)
+
+for (target_climate_zone in all_climatezones) {
+  
+  loca_metadata = NCEI_nClimDiv_LUT |>
+    filter(climdiv == target_climate_zone)
+  
+  
+  
+  target_climate_name = str_c(unique(loca_metadata$climdiv_name), 
+                              " Climate Division, ", 
+                              unique(loca_metadata$climdiv_state_name),
+                              " (",
+                              unique(loca_metadata$climdiv),
+                              ")", 
+                              sep = "")
+  
+  print(target_climate_name)
+  
+  # Crack our LOCA File for our climate zone
+  
+  
+  loca_file_name = str_c("https://kyrill.ias.sdsmt.edu:8443/thredds/fileServer/" , 
+                         "LOCA2/" ,
+                         "Specific_Regional_Aggregate_Sets/NCEI_Climate_Divisions/" ,
+                         "R_Monthly_Files/LOCA2_V1_nCLIMDIV_MONTHLY_" , 
+                         target_climate_zone ,
+                         ".RData", 
+                         sep = "")
+  
+  load(url(loca_file_name),
+       verbose = FALSE)
+  closeAllConnections()
+  
+  
+  loca2_monthly = loca2_monthly |> 
+    filter(Percentile == target_aggregation_statistic) |>
+    mutate("tasavg" = (tasmax + tasmin)/2)  |>
+    rename("climdiv"  = "Division")     |>
+    select("Scenario",
+           "Model",
+           "Member",
+           "Percentile",
+           "Year",
+           "Month",
+           "climdiv",
+           "Time",
+           "tasmax",
+           "tasavg",
+           "tasmin",
+           "pr")
+  
+  # Get Model Values
+  
+  Models    = unique(loca2_annual$Model)
+  Scenarios = unique(loca2_annual$Scenario)
+  
+  remove(loca_file_name)
+  
+  
+  # Localize Aggregate Files
+  
+  
+  
+  nclimdiv_monthly = NCEI_nClimDiv_LUT |>
+    filter(climdiv == target_climate_zone)
+  
+
+  
+  
+  
+  
+  
+  
+  # Get Model Values
+  
+  Models    = unique(loca2_annual$Model)
+  Scenarios = unique(loca2_annual$Scenario)
+  
+  
+  
+  # ClimClass Time Series
+  first = TRUE
+  
+  for (model in Models) {
+    
+    local_loca2_monthly = loca2_monthly |>
+      filter(Model == model)
+    
+    
+    Local_Scenarios = unique(local_loca2_monthly$Scenario)
+    print(str_c("   - ",model))
+    
+    for (scenario in Local_Scenarios[2:length(Local_Scenarios)]) { 
+      print(str_c("     - ",scenario))
+      thorntwaite_inputs = local_loca2_monthly |>
+        filter((Scenario == "Historical") | (Scenario == scenario)) |>
+        arrange(Time) |>
+        rename("year"  = Year,
+               "month" = Month,
+               "Tn"    = tasmin,
+               "Tm"    = tasavg,
+               "Tx"    = tasmax,
+               "P"     = pr)
+      thorntwaite_budget_raw = thornthwaite(series   = thorntwaite_inputs,
+                                            latitude = loca_metadata$climdiv_mean_latitude,
+                                            TAW      = loca_metadata$climdiv_mean_mass_content_of_water_in_soil,
+                                            snow.init = 0.)
+      
+      # Precipitation
+      water_budget = t( as_tibble(thorntwaite_budget_raw$W_balance$Precipitation) )
+      colnames(water_budget) = str_c(1:12)
+      water_budget = water_budget %>%
+        as.data.frame %>% 
+        rownames_to_column(.,
+                           var = 'year')
+      water_budget$Variable = "Precipitation"
+      
+      #Et0
+      raw_wb2 = t( as_tibble(thorntwaite_budget_raw$W_balance$Et0) )
+      colnames(raw_wb2) = str_c(1:12)
+      raw_wb2 = raw_wb2 %>%
+        as.data.frame %>% 
+        rownames_to_column(.,
+                           var = 'year')
+      raw_wb2$Variable = "Potential_Evap"
+      
+      water_budget = rbind(water_budget,raw_wb2)
+      remove(raw_wb2)
+      
+      #Storage
+      raw_wb2           = t( as_tibble(thorntwaite_budget_raw$W_balance$Storage) )
+      colnames(raw_wb2) = str_c(1:12)
+      raw_wb2 = raw_wb2 %>%
+        as.data.frame %>% 
+        rownames_to_column(.,
+                           var = 'year')
+      raw_wb2$Variable = "Storage"
+      
+      water_budget = rbind(water_budget,raw_wb2)  
+      remove(raw_wb2)
+      
+      #'Prec. - PotEvap.'
+      raw_wb2 = t( as_tibble(thorntwaite_budget_raw$W_balance$'Prec. - Evap.') )
+      colnames(raw_wb2) = str_c(1:12)
+      raw_wb2 = raw_wb2 %>%
+        as.data.frame %>% 
+        rownames_to_column(.,
+                           var = 'year')
+      raw_wb2$Variable = "Prec_m_PE"
+      
+      water_budget = rbind(water_budget,raw_wb2)  
+      remove(raw_wb2)
+      
+      #Deficit
+      raw_wb2 = t( as_tibble(thorntwaite_budget_raw$W_balance$Deficit) )
+      colnames(raw_wb2) = str_c(1:12)
+      raw_wb2 = raw_wb2 %>%
+        as.data.frame %>% 
+        rownames_to_column(.,
+                           var = 'year')
+      raw_wb2$Variable = "Deficit"
+      
+      water_budget = rbind(water_budget,raw_wb2)
+      remove(raw_wb2)
+      
+      #Surplus
+      raw_wb2 = t( as_tibble(thorntwaite_budget_raw$W_balance$Surplus) )
+      colnames(raw_wb2) = str_c(1:12)
+      raw_wb2 = raw_wb2 %>%
+        as.data.frame %>% 
+        rownames_to_column(.,
+                           var = 'year')
+      raw_wb2$Variable = "Surplus"
+      
+      water_budget = rbind(water_budget, raw_wb2)
+      remove(raw_wb2)
+      
+      water_budget = gather(data  = water_budget,
+                            key   = month,
+                            value = "value",
+                            str_c(1:12))
+      
+      water_budget$Date = as.Date(str_c(water_budget$year,
+                                        "-",
+                                        water_budget$month,
+                                        "-15",
+                                        sep = ""))
+      
+      water_budget = spread(data = water_budget,
+                            key  = "Variable",
+                            value = "value")
+      
+      water_budget = water_budget %>% arrange(Date)
+      
+      # finish the budget by critical parameters
+      
+      # calculate evapotransporation
+      water_budget = water_budget %>% 
+        mutate(Evaporation = Potential_Evap - Deficit)
+      
+      # calculate precipitation - true evaporation
+      water_budget = water_budget %>% 
+        mutate(Prec_m_Evap = Precipitation - Evaporation)
+      
+      
+      
+      # calculate recharge by calculating the increase in soil storage from rainfall
+      water_budget = water_budget %>% 
+        mutate(Recharge = c(NA, diff(x = Storage, 
+                                     lag = 1))) %>% 
+        mutate(Recharge = ifelse(test = Recharge>0, 
+                                 yes  = Recharge, 
+                                 no   = 0))
+      
+      # separate recharge from surplus in teh water budget
+      water_budget = water_budget %>% 
+        mutate(Surplus = Surplus - Recharge)  %>% 
+        mutate(Surplus = ifelse(test = Surplus>0, 
+                                yes  = Surplus, 
+                                no   = 0))
+      
+      # calculate recharge by calculating the increase in soil storage from rainfall
+      water_budget = water_budget %>% 
+        mutate(Snowpack = Prec_m_Evap - Recharge - Surplus)  %>% 
+        mutate(Snowpack = ifelse(test = Snowpack>0, 
+                                 yes  = Snowpack, 
+                                 no   = 0))  
+      
+      # repair precip-PE (seems to be a typo in the original ClimClass Code)
+      water_budget = water_budget %>% 
+        mutate(Prec_m_PE = Precipitation - Potential_Evap)    
+      
+      
+      water_budget$Temp_Avg = round(thorntwaite_inputs$Tm[1:length(water_budget$Precipitation)],2)
+      water_budget$Temp_Max = round(thorntwaite_inputs$Tx[1:length(water_budget$Precipitation)],2)
+      water_budget$Temp_Min = round(thorntwaite_inputs$Tn[1:length(water_budget$Precipitation)],2)
+      
+      water_budget$Time             = thorntwaite_inputs$Time
+      water_budget$Snowpack         = round(water_budget$Snowpack,5)
+      water_budget$Scenario         = unique(local_loca2_monthly$Scenario)
+      water_budget$Model            = unique(local_loca2_monthly$Model)
+      water_budget$Member           = unique(local_loca2_monthly$Member)
+      water_budget$Percentile       = unique(local_loca2_monthly$Percentile)
+      water_budget$Climate_Division = unique(local_loca2_monthly$climdiv)
+      
+      
+      
+      water_budget = water_budget %>% select(Scenario,
+                                             Model,
+                                             Member,
+                                             Percentile,
+                                             Time,
+                                             Climate_Division,
+                                             Temp_Min,
+                                             Temp_Avg,
+                                             Temp_Max,
+                                             Precipitation,
+                                             Potential_Evap,
+                                             Evaporation,
+                                             Deficit,
+                                             Storage,
+                                             Snowpack,
+                                             Recharge,
+                                             Surplus,
+                                             Prec_m_PE,
+                                             Prec_m_Evap)
+      
+      if (scenario != Local_Scenarios[2]) {
+        water_budget = water_budget |>
+          filter(Scenario != "Historical")
+      }
+      
+      if (first) {
+        LOCA2_Water_Budget = water_budget
+      } else {
+        LOCA2_Water_Budget = rbind(LOCA2_Water_Budget,
+                                   water_budget)
+        
+      }
+    }
+    
+  }
+  
+  
+  
+  loca_file_name = str_c("./LOCA2_V1_nCLIMDIV_THORNTHWAITE_" , 
+                         target_climate_zone ,
+                         ".RData", 
+                         sep = "")
+  
+  
+  save(LOCA2_Water_Budget, file = loca_file_name)
+  closeAllConnections()
+  
+}
