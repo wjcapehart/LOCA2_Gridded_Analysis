@@ -59,7 +59,7 @@ remove(nclimdiv_file)
 
 all_climatezones = unique(NCEI_nClimDiv_LUT$climdiv)
 
-for (target_climate_zone in all_climatezones[1]) {
+for (target_climate_zone in all_climatezones) {
   
   loca_metadata = NCEI_nClimDiv_LUT |>
     filter(climdiv == target_climate_zone)
