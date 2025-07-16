@@ -111,8 +111,8 @@ for (target_climate_zone in all_climatezones) {
   
   # Get Model Values
   
-  Models    = unique(loca2_annual$Model)
-  Scenarios = unique(loca2_annual$Scenario)
+  Models    = unique(loca2_monthly$Model)
+  Scenarios = unique(loca2_monthly$Scenario)
   
   remove(loca_file_name)
   
@@ -133,8 +133,8 @@ for (target_climate_zone in all_climatezones) {
   
   # Get Model Values
   
-  Models    = unique(loca2_annual$Model)
-  Scenarios = unique(loca2_annual$Scenario)
+  Models    = unique(loca2_monthly$Model)
+  Scenarios = unique(loca2_monthly$Scenario)
   
   
   
