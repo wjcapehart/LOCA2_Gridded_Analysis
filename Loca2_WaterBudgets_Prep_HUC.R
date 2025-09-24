@@ -37,6 +37,8 @@ HUC_table_avail = read_csv("https://thredds.ias.sdsmt.edu:8443/thredds/fileServe
 
 # Pull the huc data
 
+HUC_table_avail = HUC_table_avail |> filter(Enhanced==1)
+
 all_hucs = unique(HUC_table_avail$`HUC-08`)
 
 remove(huc_metadata_file)
