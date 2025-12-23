@@ -3,7 +3,7 @@
 
 # # LOCA2 30-year Moving Mean Annual Min Temps.
 
-# In[ ]:
+# In[1]:
 
 
 ##########################################################
@@ -35,14 +35,14 @@ def geo_idx(dd, dd_array):
 
     geo_idx = (np.abs(dd_array - dd)).argmin()
     return geo_idx
- 
+
 #
 ##########################################################
 
 
 # ##  File Control
 
-# In[ ]:
+# In[2]:
 
 
 ##########################################################
@@ -70,8 +70,8 @@ rank00      = "01"
 root_directory        = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/Climate_CONUS/Monthly"
 root_url              = "http://kyrill.ias.sdsmt.edu:8080/thredds/dodsC/LOCA2/Climate_CONUS/Monthly"
 
-loca2_inventory_file  = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/Original_CONUS/LOCA2_Model_Member_Available_List.csv"
-loca2_complete_file   = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/Original_CONUS/LOCA2_Model_Member_Complete_List.csv"
+loca2_inventory_file  = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/LOCA2_Model_Member_Available_List.csv"
+loca2_complete_file   = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/LOCA2_Model_Member_Complete_List.csv"
 
 #
 ##########################################################
@@ -80,7 +80,7 @@ loca2_complete_file   = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/Or
 # ## Inventories and Lookup Tables
 # ### All Potential Ensembles
 
-# In[ ]:
+# In[3]:
 
 
 ##########################################################
@@ -119,7 +119,7 @@ print(model_member_key)
 
 # ### All Available Ensembles for Selected Rank
 
-# In[ ]:
+# In[4]:
 
 
 ##########################################################
@@ -164,8 +164,8 @@ print(loca2_ensembles_list)
 # Loop Test
 #
 
-    
-for scenario in scenarios[1:]:
+
+for scenario in scenarios[1:2]:
     print("# ################################################")
     First = True
     for m in range(len(models)-1):
@@ -182,7 +182,7 @@ for scenario in scenarios[1:]:
 
         model_member_name = np.array([model + "." + member], dtype="str")
         model_member      = np.array([model_member], dtype="int16").flatten().astype(np.int16)
-        
+
 
 
         model_member = xr.DataArray(data   = model_member.astype(np.int16),
@@ -231,7 +231,7 @@ for scenario in scenarios[1:]:
                                     models[m]                                 +  "."  + \
                                     members[m]                                + "___" + \
                                     scenario                                  + ".nc"  
- 
+
                 combined_wc_files = root_directory                            +  "/"  + \
                                     Final_File_Prefix                         + "___" + \
                                     variable                                  + "___" + \
@@ -245,20 +245,28 @@ for scenario in scenarios[1:]:
                                     variable                                  + "___" + \
                                     "ALLRANK"+ rank00                         + "___" + \
                                     scenario                                  + ".nc" 
-        
+
+
+                print("    - hist_file: " + hist_file)
+                print("    - futr_file: " + futr_file)
+                print("    - comb_file: " + combined_file)
+                print("    - comw_file: " + combined_wc_files)
+                print("    - finl_file: " + final_merged_file)
+
+
                 ds            = xr.open_dataset(filename_or_obj = futr_file)
                 time_futr_max = ds["time"].values.max()
                 time_futr_n   = ds[variable].values.shape
-                
+
                 print("#    Max_Orig_Time = " + str(time_futr_max) + "      " + str(time_futr_n) )
-                
+
                 if (First):
                     model_member_array = np.array(model_members[m], dtype = "int16")
                     First              = False
                 else:
                     model_member_array = np.append(model_member_array, model_members[m]).flatten().astype(np.int16)
-                    
-                    
+
+
 
                 cdo_cat_command = "cdo --no_history -f nc4 -z zip_9  mergetime "
 
@@ -271,19 +279,19 @@ for scenario in scenarios[1:]:
                 subprocess.run(["ncatted -Oh -a _FillValue,lon,d,,  " + tempfile], shell = True, check = True)
                 subprocess.run(["ncatted -Oh -a _FillValue,lat,d,,  " + tempfile], shell = True, check = True)
                 subprocess.run(["ncatted -Oh -a _FillValue,time,d,, " + tempfile], shell = True, check = True)
- 
+
                 ds              = xr.open_dataset(filename_or_obj = tempfile)
                 tasmin0         = ds[variable]
-        
+
                 time_merged_max = ds["time"].values.max()
                 time_merged_n   = ds[variable].values.shape
-                
+
                 print("#   Max_Merge_Time = " + str(time_merged_max) + "     " + str(time_merged_n) )      
-        
+
                 subprocess.run(["rm -fr " + tempfile], shell = True, check = True)
-            
-            
-                
+
+
+
                 time = ds["time"]
                 lon = ds["lon"]
                 lat = ds["lat"]
@@ -300,40 +308,39 @@ for scenario in scenarios[1:]:
                 month = np.arange(start = 1,
                                   stop  = 12+1,
                                   dtype = np.int16)
-                
+
                 yeardv = xr.DataArray(data   =  year,
                                     dims   = "year",
                                     coords = {"year": year},
                                     attrs  = {"description": "calendar year",
                                                 "long_name": "calendar year"})
-                
+
                 monthdv = xr.DataArray(data   =  month,
                                       dims    = "month",
                                       coords  = {"month": month},
                                       attrs   = {"description": "calendar month",
                                                    "long_name": "calendar month"})
-                
+
                 print("Start Reindexing",os.system("date"))
-                
-                multiindex_ds = ds.assign_coords(month =monthdv,
-                                                 year  =yeardv
-                ).stack(
-                    time2d=("year","month")
-                ).reset_index(
-                    "time", drop=True
-                ).rename(
-                    time="time2d"
-                ).unstack("time2d")
+
+                multiindex_ds = ds.assign_coords(month = monthdv,
+                                                 year  = yeardv).  \
+                                   stack(time2d=("year",
+                                                 "month")).        \
+                                   reset_index("time", drop=True). \
+                                   rename(time="time2d").          \
+                                   unstack("time2d")
 
                 print("Start Rolling Mean",os.system("date"))
 
-                
+
                 rolling_monthly = multiindex_ds[variable].rolling(year   =   30,
                                                                   center = True).mean().dropna(dim = "year",
                                                                                                how =  "all") 
                 rolling_monthly.expand_dims(dim={"model_member" : 1}) 
                 rolling_monthly.attrs["cell_methods"] = cell_method
                 #del rolling_monthly.attrs["coordinates"]
+                print(rolling_monthly["time"].values)
                 print("Finished Rolling Mean",os.system("date"))
 
 
@@ -343,7 +350,7 @@ for scenario in scenarios[1:]:
                                                   "model_member" : model_member.astype(np.int16)},
                                      attrs     = {"scenario"     :                      scenario})
 
-                
+
 
 
                 outdata.to_netcdf(path           =  combined_file, 
@@ -357,7 +364,7 @@ for scenario in scenarios[1:]:
                                                                   "_FillValue":  -32767}})
 
                 print("Writing NetCDF Climate File",os.system("date"))
-                
+
                 subprocess.run([local_hdf_string+" ncatted -Oh -a _FillValue,lon,d,, " + combined_file], 
                                shell = True, 
                                check = True)
@@ -377,14 +384,14 @@ for scenario in scenarios[1:]:
                 time_running_max = ds["year"].values.max()
                 time_running_n   = ds[variable].values.shape
                 print("# Max_Running_Time = " + str(time_running_max) + "  " + str(time_running_n) )                                 
-                
+
             # end check on available variable
         # end check on on available member
-            
+
     #end loop on model
 
     print("# = = = = = = = = = = = = = = = = = = = = = = = = ") 
-    
+
     model_member = xr.DataArray(data   = model_member_array.astype(np.int16),
                                 name   =  "model_member",
                                 dims   = ["model_member"],
@@ -394,13 +401,13 @@ for scenario in scenarios[1:]:
                                           "comment1"    : "LUT Indexing Starts at 0"})
 
     model_member_ds = xr.Dataset(data_vars = {"model_member" : model_member})
-    
+
     model_member_ds.to_netcdf(path            =   memberfile, 
                                mode           =           'w', 
                                format         =     "NETCDF4",
                                engine         =    "h5netcdf", #
                                unlimited_dims = "model_member")  
-        
+
     cdo_cat_command = " cdo --no_history -f nc4 -z zip_9 cat "
     nco_cat_command = " ncrcat --4 --hst --dfl_lvl 9  "
     command_aggregate = nco_cat_command +combined_wc_files + " " + final_merged_file    
@@ -430,7 +437,7 @@ for scenario in scenarios[1:]:
                    check = True) 
 
 # end loop on scenario
-                
+
 print("# ================================================")
 print("end processing")
 
