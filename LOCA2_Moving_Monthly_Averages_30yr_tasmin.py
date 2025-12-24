@@ -3,7 +3,7 @@
 
 # # LOCA2 30-year Moving Mean Annual Min Temps.
 
-# In[1]:
+# In[ ]:
 
 
 ##########################################################
@@ -22,6 +22,8 @@ import matplotlib.pyplot as plt
 # loading xarray
 
 import xarray            as xr
+
+import datetime as datetime
 
 # Loading pandas
 
@@ -42,7 +44,7 @@ def geo_idx(dd, dd_array):
 
 # ##  File Control
 
-# In[2]:
+# In[ ]:
 
 
 ##########################################################
@@ -73,14 +75,74 @@ root_url              = "http://kyrill.ias.sdsmt.edu:8080/thredds/dodsC/LOCA2/Cl
 loca2_inventory_file  = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/LOCA2_Model_Member_Available_List.csv"
 loca2_complete_file   = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/LOCA2_Model_Member_Complete_List.csv"
 
+loca2_mask            = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/LOCA2_MASKS.nc"
+
 #
 ##########################################################
+
+
+# In[ ]:
+
+
+##########################################################
+#
+# Time Coordinates
+#
+
+years_start = np.arange(start =    1986, 
+                        stop  =    2071,   dtype=np.float32)
+years_end   = np.array(years_start + 29, dtype=np.float32) 
+
+years_middle = np.array(years_start/2 + years_end/2, dtype=np.float32)
+years_bounds = np.array([years_start,years_end]).transpose()
+n_runnings = len(years_start)
+
+yearall = xr.DataArray(name = "year",
+                      data   = years_middle,
+                      dims   = {"year": n_runnings},
+                      coords = {"year": years_middle},
+                      attrs  = {"description": "middle calendar year for 30-yr period",
+                                "long_name": "middle calendar year for 30-yr period",
+                                "bounds":"year_bnds"})
+
+
+year_bnds = xr.DataArray(name = "year_bnds",
+                      data   =  years_bounds,
+                      coords = {"year": years_middle,
+                                "bnds": 2},
+                      attrs  = {"description": "boundary calendar years for 30-yr period",
+                                "long_name": "boundary calendar years for 30-yr period"})
+
+
+ds_masks = xr.open_dataset(filename_or_obj = loca2_mask)
+
+lon_bnds = ds_masks["lon_bounds"]
+lat_bnds = ds_masks["lat_bounds"]
+lat_bnds.name = "lat_bnds"
+lon_bnds.name = "lon_bnds"
+
+lon = ds_masks["lon"]
+lat = ds_masks["lat"]
+
+
+print(lat)
+print(lon)
+print(year_bnds)
+
+#
+##########################################################
+
+
+# In[ ]:
+
+
+lon_bnds
 
 
 # ## Inventories and Lookup Tables
 # ### All Potential Ensembles
 
-# In[3]:
+# In[ ]:
 
 
 ##########################################################
@@ -119,7 +181,7 @@ print(model_member_key)
 
 # ### All Available Ensembles for Selected Rank
 
-# In[4]:
+# In[ ]:
 
 
 ##########################################################
@@ -166,6 +228,8 @@ print(loca2_ensembles_list)
 
 
 for scenario in scenarios[1:2]:
+    print("# ################################################")
+    print("# ################################################")
     print("# ################################################")
     First = True
     for m in range(len(models)-1):
@@ -273,7 +337,6 @@ for scenario in scenarios[1:2]:
                 command_aggregate = cdo_cat_command + hist_file + " " + futr_file + " " + tempfile
                 subprocess.run(["rm -fr " + tempfile],                             shell = True, check = True)
                 subprocess.run([command_aggregate],                                shell = True, check = True)
-                subprocess.run(["ncatted -Oh -a bounds,time,d,,     " + tempfile], shell = True, check = True)
                 subprocess.run(["ncatted -Oh -a bounds,lon,d,,      " + tempfile], shell = True, check = True)
                 subprocess.run(["ncatted -Oh -a bounds,lat,d,,      " + tempfile], shell = True, check = True)
                 subprocess.run(["ncatted -Oh -a _FillValue,lon,d,,  " + tempfile], shell = True, check = True)
@@ -309,11 +372,14 @@ for scenario in scenarios[1:2]:
                                   stop  = 12+1,
                                   dtype = np.int16)
 
-                yeardv = xr.DataArray(data   =  year,
+                yeardv = xr.DataArray(name = "year",
+                                      data   =  year,
                                     dims   = "year",
                                     coords = {"year": year},
-                                    attrs  = {"description": "calendar year",
-                                                "long_name": "calendar year"})
+                                    attrs  = {"description": "beginning period calendar year",
+                                                "long_name": "beginning period calendar year"})
+
+
 
                 monthdv = xr.DataArray(data   =  month,
                                       dims    = "month",
@@ -329,26 +395,46 @@ for scenario in scenarios[1:2]:
                                                  "month")).        \
                                    reset_index("time", drop=True). \
                                    rename(time="time2d").          \
-                                   unstack("time2d")
+                                   unstack("time2d").drop_vars("time_bnds")
 
                 print("Start Rolling Mean",os.system("date"))
 
 
-                rolling_monthly = multiindex_ds[variable].rolling(year   =   30,
-                                                                  center = True).mean().dropna(dim = "year",
-                                                                                               how =  "all") 
-                rolling_monthly.expand_dims(dim={"model_member" : 1}) 
-                rolling_monthly.attrs["cell_methods"] = cell_method
-                #del rolling_monthly.attrs["coordinates"]
-                print(rolling_monthly["time"].values)
+                for i in range(n_runnings):
+                    if ((i % 0) == 10):
+                        print("   --- Processing ",years_start[i] , "to", years_end[i])
+
+                    year_co = xr.DataArray(name = "year",
+                                           data   =np.array([years_start[i]/2+years_end[i]/2], dtype=np.float32),
+                                           dims   = "year",
+                                           coords = {"year": np.array([years_start[i]], dtype=np.int16)},
+                                           attrs  = {"description": "beginning period calendar year",
+                                                     "long_name": "beginning period calendar year"})
+
+                    if (i == 0):
+                        running_var = multiindex_ds[variable].sel(year = slice(years_start[i],years_end[i])).mean(dim="year", keep_attrs = True).transpose("month","lat","lon").expand_dims(dim={"model_member" : 1,"year":1}) 
+                        running_var.coords["model_member"]=model_member
+                        running_var.coords["year"] = year_co
+                    else:
+                        temp_30 = multiindex_ds[variable].sel(year = slice(years_start[i],years_end[i])).mean(dim="year").transpose("month","lat","lon").expand_dims(dim={"model_member" : 1,"year":1}) 
+                        temp_30.coords["model_member"]=model_member
+                        temp_30.coords["year"] = year_co
+                        running_var = xr.concat([running_var, temp_30], dim = "year")
+                        del temp_30
+
                 print("Finished Rolling Mean",os.system("date"))
 
 
-                outdata = xr.Dataset(data_vars = {variable       :               rolling_monthly,
-                                                  "lat"          :                           lat,
-                                                  "lon"          :                           lon,
-                                                  "model_member" : model_member.astype(np.int16)},
-                                     attrs     = {"scenario"     :                      scenario})
+                outdata = xr.Dataset(data_vars = {"model_member" : model_member.astype(np.int16),
+                                                  "year"         : yearall,
+                                                #  "year_bnds"    : year_bnds,
+                                                  "month"        : monthdv,
+                                                  "lat"          : lat,
+                                                  #"lat_bnds"     : lat_bnds,
+                                                  "lon"          : lon,
+                                                  #"lon_bnds"     : lon_bnds,
+                                                   variable      : running_var},
+                                     attrs     = {"scenario"     : scenario})
 
 
 
@@ -358,32 +444,17 @@ for scenario in scenarios[1:2]:
                                   format         =      "NETCDF4",
                                   engine         =     "h5netcdf", #
                                   unlimited_dims = "model_member",
-                                  encoding       = {variable: {        "dtype": "int16", 
+                                  encoding       = {variable: {         "zlib":    True,
+                                                                  "complevel" :       7, 
+                                                                       "dtype": "int16", 
                                                                 "scale_factor":     0.1,
                                                                   "add_offset":     0.0,                                        
                                                                   "_FillValue":  -32767}})
 
                 print("Writing NetCDF Climate File",os.system("date"))
 
-                subprocess.run([local_hdf_string+" ncatted -Oh -a _FillValue,lon,d,, " + combined_file], 
-                               shell = True, 
-                               check = True)
-                subprocess.run([local_hdf_string+" ncatted  -Oh -a _FillValue,lat,d,, " + combined_file], 
-                               shell = True, 
-                               check = True)
 
-                subprocess.run([local_hdf_string + " ncpdq  -h -a year,month,lat,lon " + combined_file + " " + combined_file+".swapped.nc"],
-                                shell = True, 
-                                check = True)      
-                print("Correcting all Dimensions",os.system("date"))
 
-                subprocess.run(["mv -v " + combined_file + ".swapped.nc " + combined_file],
-                                shell = True,  
-                                check = True)                               
-                ds               = xr.open_dataset(filename_or_obj = combined_file)
-                time_running_max = ds["year"].values.max()
-                time_running_n   = ds[variable].values.shape
-                print("# Max_Running_Time = " + str(time_running_max) + "  " + str(time_running_n) )                                 
 
             # end check on available variable
         # end check on on available member
@@ -411,7 +482,7 @@ for scenario in scenarios[1:2]:
     cdo_cat_command = " cdo --no_history -f nc4 -z zip_9 cat "
     nco_cat_command = " ncrcat --4 --hst --dfl_lvl 9  "
     command_aggregate = nco_cat_command +combined_wc_files + " " + final_merged_file    
-    print("# Final Aggregation")
+    print("# Final Aggregation for "+scenario)
     subprocess.run(["rm -fr " + final_merged_file + " " + tempfile + " 2_" + tempfile], 
                    shell = True, 
                    check = True)    
@@ -420,21 +491,7 @@ for scenario in scenarios[1:2]:
                    check = True)
     print("# Files Concatenated")
 
-    #subprocess.run([local_hdf_string+" ncks -h -C -O -x -v model_member " + tempfile + " " + final_merged_file], 
-    #               shell = True, 
-    #               check = True)
-    #print("# dimension dropped")
-    #subprocess.run([local_hdf_string+" ncks -h -A "+ memberfile + " " + final_merged_file], 
-    #               shell = True, 
-    #               check = True)
-    ds               = xr.open_dataset(filename_or_obj = final_merged_file)
-    time_running_max = ds["year"].values.max()
-    time_running_n   = ds[variable].values.shape
-    print("#     Max_Ens_Time = " + str(time_running_max) + " " + str(time_running_n) )  
-    print("# dimension swapped")
-    subprocess.run(["rm -fr  " + tempfile + " 2_" + tempfile + " " + combined_wc_files], 
-                   shell = True, 
-                   check = True) 
+
 
 # end loop on scenario
 
@@ -448,7 +505,11 @@ print("end processing")
 
 
 
-# 
+# In[ ]:
+
+
+
+
 
 # In[ ]:
 
