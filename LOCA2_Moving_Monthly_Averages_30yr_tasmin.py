@@ -136,8 +136,6 @@ print(year_bnds)
 # In[ ]:
 
 
-lon_bnds
-
 
 # ## Inventories and Lookup Tables
 # ### All Potential Ensembles
@@ -227,7 +225,7 @@ print(loca2_ensembles_list)
 #
 
 
-for scenario in scenarios[1:2]:
+for scenario in scenarios[2:]:
     print("# ################################################")
     print("# ################################################")
     print("# ################################################")
