@@ -483,14 +483,17 @@ for scenario in scenarios[1:2]:
     nco_cat_command = " ncrcat --4 --hst --dfl_lvl 9  "
     command_aggregate = nco_cat_command +combined_wc_files + " " + final_merged_file    
     print("# Final Aggregation for "+scenario)
-    subprocess.run(["rm -fr " + final_merged_file + " " + tempfile + " 2_" + tempfile], 
+    subprocess.run(["rm -frv " + final_merged_file + " " + tempfile + " 2_" + tempfile], 
                    shell = True, 
                    check = True)    
     subprocess.run([local_hdf_string + command_aggregate], 
                    shell = True, 
                    check = True)
     print("# Files Concatenated")
-
+    subprocess.run(["rm -frv " + combined_wc_files], 
+                   shell = True, 
+                   check = True)
+    print("# Files Cleaned")
 
 
 # end loop on scenario
