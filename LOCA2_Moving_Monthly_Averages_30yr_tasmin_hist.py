@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # LOCA2 30-year Moving Mean Annual Min Temps Future Period
+# # LOCA2 30-year Moving Mean Annual Min Temps 
 
 # In[ ]:
 
@@ -47,6 +47,12 @@ def geo_idx(dd, dd_array):
 # In[ ]:
 
 
+
+
+
+# In[ ]:
+
+
 ##########################################################
 #
 # File Control
@@ -57,8 +63,8 @@ Final_File_Prefix    = "LOCA2-CONUS-ANNUAL30YRUNMEAN_MONTHLYMEAN"
 
 variable    = "tasmin"
 
-tempfile    = "./" + variable + "_tempfile.nc"
-memberfile  = "./" + variable + "_model_member.nc"
+tempfile    = "./" + variable + "_tempfile_h.nc"
+memberfile  = "./" + variable + "_model_member_h.nc"
 
 local_hdf_string = "export HDF5_USE_FILE_LOCKING=FALSE && "
 local_hdf_string = " "
@@ -89,8 +95,8 @@ loca2_mask            = "/data/DATASETS/LOCA_MACA_Ensembles/LOCA2/LOCA2_CONUS/LO
 # Time Coordinates
 #
 
-years_start = np.arange(start =    1986, 
-                        stop  =    2071,   dtype=np.float32)
+years_start = np.arange(start =    1950, 
+                        stop  =    1986,   dtype=np.float32)
 years_end   = np.array(years_start + 29, dtype=np.float32) 
 
 years_middle = np.array(years_start/2 + years_end/2, dtype=np.float32)
@@ -131,6 +137,12 @@ print(year_bnds)
 
 #
 ##########################################################
+
+
+# In[ ]:
+
+
+
 
 
 # ## Inventories and Lookup Tables
@@ -221,7 +233,7 @@ print(loca2_ensembles_list)
 #
 
 
-for scenario in scenarios[1:]:
+for scenario in scenarios[0:1]:
     print("# ################################################")
     print("# ################################################")
     print("# ################################################")
@@ -254,6 +266,8 @@ for scenario in scenarios[1:]:
 
         print("# ================================================")
 
+        # print(m,scenario,loca2_ensembles_list.iloc[m])
+
         inventory = loca2_ensembles_list.iloc[m].loc[scenario]
         print("# " + str(model_member[0].values).zfill(3) + " " + model + " " + member + " " + scenario + " " + inventory)
 
@@ -274,13 +288,7 @@ for scenario in scenarios[1:]:
                                     members[m]                                + "___" + \
                                     "historical"                              + ".nc"  
 
-                futr_file         = root_directory                            +  "/"  + \
-                                    scenario                                  +  "/"  + \
-                                    Original_File_Prefix                      + "___" + \
-                                    variable                                  + "___" + \
-                                    models[m]                                 +  "."  + \
-                                    members[m]                                + "___" + \
-                                    scenario                                  + ".nc"  
+
 
                 combined_file     = root_directory                            +  "/"  + \
                                     Final_File_Prefix                         + "___" + \
@@ -306,17 +314,16 @@ for scenario in scenarios[1:]:
 
 
                 print("    - hist_file: " + hist_file)
-                print("    - futr_file: " + futr_file)
                 print("    - comb_file: " + combined_file)
                 print("    - comw_file: " + combined_wc_files)
                 print("    - finl_file: " + final_merged_file)
 
 
-                ds            = xr.open_dataset(filename_or_obj = futr_file)
-                time_futr_max = ds["time"].values.max()
-                time_futr_n   = ds[variable].values.shape
+                ds            = xr.open_dataset(filename_or_obj = hist_file)
+                time_hist_max = ds["time"].values.max()
+                time_hist_n   = ds[variable].values.shape
 
-                print("#    Max_Orig_Time = " + str(time_futr_max) + "      " + str(time_futr_n) )
+                print("#    Max_Orig_Time = " + str(time_hist_max) + "      " + str(time_hist_n) )
 
                 if (First):
                     model_member_array = np.array(model_members[m], dtype = "int16")
@@ -328,7 +335,7 @@ for scenario in scenarios[1:]:
 
                 cdo_cat_command = "cdo --no_history -f nc4 -z zip_9  mergetime "
 
-                command_aggregate = cdo_cat_command + hist_file + " " + futr_file + " " + tempfile
+                command_aggregate = "cp -frv " + hist_file + " " + tempfile
                 subprocess.run(["rm -fr " + tempfile],                             shell = True, check = True)
                 subprocess.run([command_aggregate],                                shell = True, check = True)
                 subprocess.run(["ncatted -Oh -a bounds,lon,d,,      " + tempfile], shell = True, check = True)
