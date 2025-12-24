@@ -401,7 +401,7 @@ for scenario in scenarios[1:2]:
 
 
                 for i in range(n_runnings):
-                    if ((i % 0) == 10):
+                    if ((i % 10) == 0) :
                         print("   --- Processing ",years_start[i] , "to", years_end[i])
 
                     year_co = xr.DataArray(name = "year",
