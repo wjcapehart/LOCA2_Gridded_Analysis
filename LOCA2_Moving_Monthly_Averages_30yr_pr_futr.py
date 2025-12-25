@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # LOCA2 30-year Moving Mean Monthly Min Temps Future Period
+# # LOCA2 30-year Moving Mean Monthly Precipitation Future Period
 
 # In[ ]:
 
@@ -52,18 +52,18 @@ def geo_idx(dd, dd_array):
 # File Control
 #
 
-Original_File_Prefix = "LOCA2-CONUS-MONTHLY_MEAN"
-Final_File_Prefix    = "LOCA2-CONUS-ANNUAL30YRUNMEAN_MONTHLYMEAN"
+Original_File_Prefix = "LOCA2-CONUS-MONTHLY_SUM"
+Final_File_Prefix    = "LOCA2-CONUS-ANNUAL30YRUNMEAN_MONTHLYSUM"
 
-variable    = "tasmin"
+variable    = "pr"
 
-tempfile    = "./" + variable + "_tempfile.nc"
-memberfile  = "./" + variable + "_model_member.nc"
+tempfile    = "./" + variable + "_tempfile_f.nc"
+memberfile  = "./" + variable + "_model_member_f.nc"
 
 local_hdf_string = "export HDF5_USE_FILE_LOCKING=FALSE && "
 local_hdf_string = " "
 
-cell_method    = "time: minimum within days  time: mean within months  time: mean over 30 years "
+cell_method    = "time: sum within days  time: sum within months  time: mean over 30 years "
 
 target_rank =  "1"
 rank00      = "01"
@@ -259,7 +259,7 @@ for scenario in scenarios[1:]:
         if (inventory != "---"):
 
 
-            if ("N" in inventory):
+            if ("P" in inventory):
 
 
 
@@ -417,7 +417,6 @@ for scenario in scenarios[1:]:
 
                 print("Finished Rolling Mean",os.system("date"))
 
-                running_var.attrs["cell_methods"] = cell_method
 
                 outdata = xr.Dataset(data_vars = {"model_member" : model_member.astype(np.int16),
                                                   "year"         : yearall,
@@ -431,6 +430,7 @@ for scenario in scenarios[1:]:
                                      attrs     = {"scenario"     : scenario})
 
 
+                running_var.attrs["cell_methods"] = cell_method
 
 
                 outdata.to_netcdf(path           =  combined_file, 
