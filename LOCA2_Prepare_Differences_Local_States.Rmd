@@ -1,0 +1,505 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+
+library(package = "tidyverse")
+library(package = "tidync")
+
+```
+
+
+```{r}
+delta_lat = 0.0625
+D_lat     = 4.125
+D_lon     = 9.000
+
+```
+
+```{r}
+delta_lat = 0.0625
+
+
+
+
+
+###  SODAK
+
+lat_min =  42.21875 # 41.50
+lat_max =  46.34375
+
+lon_min = 254.84375
+lon_max = 263.84375
+
+region = "SD"
+
+### Vermont
+
+lat_min =  42.34375
+lat_max =  46.53125
+
+
+lon_min = 282.28125
+lon_max = 291.34375
+
+region = "VT"
+
+
+###  New Mexico
+
+lat_min =  34.71875 # 41.50
+lat_max =  38.84375
+
+lon_min = 246.84375
+lon_max = 255.84375
+
+region = "NM"
+
+
+```
+
+
+
+
+
+```{r}
+
+cliped_all_file  = str_c("./LOCA2_Running_Hist_Mid_End_Century_",
+                         region,
+                         ".RData", 
+                         sep = "")
+ 
+cliped_diff_file = str_c("./LOCA2_Running_Diff_Hist_Mid_End_Century_",
+                         region,
+                         ".RData", 
+                         sep = "")
+
+cliped_ens_file = str_c("./LOCA2_Running_Ens_Diff_Hist_Mid_End_Century_",
+                        region,
+                        ".RData", 
+                        sep = "")
+```
+
+
+```{r}
+
+
+
+
+months       = c("January",   "February", "March",    "April",
+                 "May",       "June",     "July",     "August",
+                 "September", "October",  "November", "December")
+
+
+models    = c("GFDL-ESM4.r1i1p1f1", 
+              "BCC-CSM2-MR.r1i1p1f1", 
+              "GFDL-CM4.r1i1p1f1", 
+              "CNRM-CM6-1.r1i1p1f2", 
+              "TaiESM1.r1i1p1f1", 
+              "CNRM-ESM2-1.r1i1p1f2", 
+              "CNRM-CM6-1-HR.r1i1p1f2", 
+              "INM-CM4-8.r1i1p1f1", 
+              "MIROC6.r1i1p1f1", 
+              "MRI-ESM2-0.r5i1p1f1", 
+              "INM-CM5-0.r4i1p1f1", 
+              "HadGEM3-GC31-MM.r2i1p1f3", 
+              "NorESM2-LM.r2i1p1f1", 
+              "FGOALS-g3.r3i1p1f1", 
+              "ACCESS-ESM1-5.r1i1p1f1", 
+              "HadGEM3-GC31-LL.r3i1p1f3", 
+              "EC-Earth3.r2i1p1f1", 
+              "NorESM2-MM.r2i1p1f1", 
+              "CanESM5.r1i1p1f1", 
+              "ACCESS-CM2.r1i1p1f1", 
+              "CESM2-LENS.r4i1p1f1", 
+              "IPSL-CM6A-LR.r3i1p1f1", 
+              "EC-Earth3-Veg.r4i1p1f1", 
+              "KACE-1-0-G.r2i1p1f1", 
+              "MPI-ESM1-2-HR.r10i1p1f1", 
+              "MPI-ESM1-2-LR.r10i1p1f1", 
+              "AWI-CM-1-1-MR.r1i1p1f1", 
+              "INM-CM5-0.r3i1p1f1", 
+              "FGOALS-g3.r1i1p1f1", 
+              "MRI-ESM2-0.r1i1p1f1", 
+              "NorESM2-LM.r3i1p1f1", 
+              "HadGEM3-GC31-MM.r1i1p1f3", 
+              "MIROC6.r2i1p1f1", 
+              "ACCESS-ESM1-5.r5i1p1f1", 
+              "ACCESS-CM2.r3i1p1f1", 
+              "EC-Earth3.r4i1p1f1", 
+              "CESM2-LENS.r6i1p1f1", 
+              "NorESM2-MM.r1i1p1f1", 
+              "EC-Earth3-Veg.r3i1p1f1", 
+              "HadGEM3-GC31-LL.r2i1p1f3", 
+              "KACE-1-0-G.r1i1p1f1", 
+              "IPSL-CM6A-LR.r2i1p1f1", 
+              "MPI-ESM1-2-HR.r2i1p1f1", 
+              "CanESM5.r4i1p1f1", 
+              "AWI-CM-1-1-MR.r2i1p1f1", 
+              "MPI-ESM1-2-LR.r3i1p1f1", 
+              "INM-CM5-0.r1i1p1f1", 
+              "NorESM2-LM.r1i1p1f1", 
+              "FGOALS-g3.r4i1p1f1", 
+              "MRI-ESM2-0.r2i1p1f1", 
+              "ACCESS-ESM1-5.r2i1p1f1", 
+              "EC-Earth3.r3i1p1f1", 
+              "ACCESS-CM2.r2i1p1f1", 
+              "CESM2-LENS.r7i1p1f1", 
+              "EC-Earth3-Veg.r5i1p1f1", 
+              "MIROC6.r3i1p1f1", 
+              "HadGEM3-GC31-LL.r1i1p1f3", 
+              "IPSL-CM6A-LR.r8i1p1f1", 
+              "CanESM5.r6i1p1f1", 
+              "MPI-ESM1-2-HR.r6i1p1f1", 
+              "MPI-ESM1-2-LR.r8i1p1f1", 
+              "AWI-CM-1-1-MR.r4i1p1f1",
+              "KACE-1-0-G.r3i1p1f1", 
+              "FGOALS-g3.r5i1p1f1", 
+              "INM-CM5-0.r5i1p1f1", 
+              "MRI-ESM2-0.r3i1p1f1", 
+              "CESM2-LENS.r3i1p1f1", 
+              "MIROC6.r5i1p1f1", 
+              "ACCESS-ESM1-5.r3i1p1f1", 
+              "EC-Earth3.r1i1p1f1", 
+              "IPSL-CM6A-LR.r5i1p1f1", 
+              "EC-Earth3-Veg.r1i1p1f1", 
+              "MPI-ESM1-2-HR.r1i1p1f1", 
+              "CanESM5.r2i1p1f1", 
+              "MPI-ESM1-2-LR.r7i1p1f1", 
+              "AWI-CM-1-1-MR.r5i1p1f1", 
+              "CESM2-LENS.r5i1p1f1", 
+              "MIROC6.r4i1p1f1", 
+              "ACCESS-ESM1-5.r4i1p1f1", 
+              "IPSL-CM6A-LR.r9i1p1f1", 
+              "MRI-ESM2-0.r4i1p1f1", 
+              "EC-Earth3-Veg.r2i1p1f1", 
+              "INM-CM5-0.r2i1p1f1", 
+              "CanESM5.r5i1p1f1", 
+              "MPI-ESM1-2-HR.r3i1p1f1", 
+              "MPI-ESM1-2-LR.r5i1p1f1", 
+              "AWI-CM-1-1-MR.r3i1p1f1", 
+              "CESM2-LENS.r1i1p1f1", 
+              "IPSL-CM6A-LR.r1i1p1f1", 
+              "MPI-ESM1-2-HR.r5i1p1f1", 
+              "CanESM5.r7i1p1f1", 
+              "MPI-ESM1-2-LR.r2i1p1f1", 
+              "CESM2-LENS.r10i1p1f1", 
+              "IPSL-CM6A-LR.r10i1p1f1", 
+              "MPI-ESM1-2-HR.r9i1p1f1", 
+              "CanESM5.r3i1p1f1", 
+              "MPI-ESM1-2-LR.r6i1p1f1", 
+              "CESM2-LENS.r2i1p1f1", 
+              "IPSL-CM6A-LR.r4i1p1f1", 
+              "MPI-ESM1-2-HR.r4i1p1f1", 
+              "MPI-ESM1-2-LR.r1i1p1f1", 
+              "CESM2-LENS.r9i1p1f1", 
+              "IPSL-CM6A-LR.r6i1p1f1", 
+              "MPI-ESM1-2-HR.r8i1p1f1", 
+              "MPI-ESM1-2-LR.r4i1p1f1", 
+              "CESM2-LENS.r8i1p1f1", 
+              "IPSL-CM6A-LR.r7i1p1f1", 
+              "MPI-ESM1-2-HR.r7i1p1f1")
+
+
+models    = models[1:26]
+
+scenarios = c("Historical", 
+              "SSP2-4.5", 
+              "SSP3-7.0", 
+              "SSP5-8.5")
+
+
+periods   = c("(1976-2005)",
+              "(2036-2065)",
+              "(2070-2099)")
+
+scenario_color = c("Historical" =        "blue",
+                   "SSP2-4.5"   = "forestgreen", 
+                   "SSP3-7.0"   =   "goldenrod",
+                   "SSP5-8.5"   =   "firebrick")
+
+scenario_fill  = c("Historical" = "deepskyblue",
+                   "SSP2-4.5"   =       "green",
+                   "SSP3-7.0"   =        "gold",
+                   "SSP5-8.5"   =         "red")
+
+
+
+```
+
+
+
+
+
+
+```{r}
+
+loca2 = tidync(x = "./LOCA2_Running_Hist_Mid_End_Century_CONUS.nc")                  %>% 
+                 hyper_tibble(lat   = (lat >= lat_min) & (lat <= lat_max),
+                              lon   = (lon >= lon_min) & (lon <= lon_max),
+                              force = TRUE)                                  %>%
+                 rename("Period"   = "year",
+                        "Month"    = "month",
+                        "Model"    = "model_member",
+                        "Scenario" = "scenario")                             %>%
+                 mutate( Month     = as.numeric(Month),
+                         Model     = as.numeric(Model),
+                         Period    = as.numeric(Period),
+                         lon       = as.numeric(lon) - 360.,
+                         lat       = as.numeric(lat))                        %>%
+
+                 mutate( Scenario  = ifelse(test = (Scenario == "historical"),
+                                            yes  = 1,
+                                            no   = Scenario),
+                         Scenario  = ifelse(test = (Scenario == "ssp245"),
+                                            yes  = 2,
+                                            no   = Scenario),
+                         Scenario  = ifelse(test = (Scenario == "ssp370"),
+                                            yes  = 3,
+                                            no   = Scenario),
+                         Scenario  = ifelse(test = (Scenario == "ssp585"),
+                                            yes  = 4,
+                                            no   = Scenario))                %>%
+                 mutate( Period    = ifelse(test = (Period > 2060),
+                                            yes  = 3,
+                                            no   = Period),
+                         Period    = ifelse(test = (Period > 2000),
+                                            yes  = 2,
+                                            no   = Period),
+                         Period    = ifelse(test = (Period > 1949),
+                                            yes  = 1,
+                                            no   = Period))                  %>%
+                 select(Scenario,
+                        Period, 
+                        Model,
+                        Month,
+                        lon,
+                        lat,
+                        tasmin,
+                        tasavg,
+                        tasmax,
+                        pr)
+
+loca2$Scenario = factor(x       = scenarios[as.numeric(loca2$Scenario)], 
+                        levels  = scenarios, 
+                        ordered = TRUE)
+
+loca2$Month    = factor(x       = months[as.numeric(loca2$Month)], 
+                        levels  = months, 
+                        ordered = TRUE)
+
+loca2$Model    = factor(x       = models[as.numeric(loca2$Model)], 
+                        levels  = models, 
+                        ordered = TRUE)
+
+loca2$Period   = factor(x       = periods[as.numeric(loca2$Period)], 
+                        levels  = periods, 
+                        ordered = TRUE)
+
+
+save("loca2"    = loca2,
+     file       = cliped_all_file,
+     compress   = "gzip")
+
+```
+
+
+
+
+```{r}
+
+loca2_hist = loca2 %>% filter(Scenario == "Historical") %>% select(- c(Period))
+loca2_futr = loca2 %>% filter(Scenario != "Historical")
+
+
+wider_hist = pivot_wider(data        = loca2_hist,
+                         values_from = c("tasmax","tasavg","tasmin", "pr"),
+                         names_sep   = ".",
+                         names_from  = "Scenario") 
+
+wider_futr = pivot_wider(data        = loca2_futr,
+                         values_from = c("tasmax","tasavg","tasmin", "pr"),
+                         names_sep   = ".",
+                         names_from  = "Scenario")
+
+loca2_diff = left_join(x  = wider_futr,
+                       y  = wider_hist) %>%
+             mutate(Period = str_c(Period,
+                                   periods[1],
+                                   sep = "-"))
+
+loca2_diff$Period = factor(x       = loca2_diff$Period, 
+                           levels  = sort( unique(loca2_diff$Period) ), 
+                           ordered = TRUE)
+
+loca2_diff = loca2_diff %>% 
+  mutate("N.2" =  `tasmin.SSP2-4.5` -  tasmin.Historical,
+         "A.2" =  `tasavg.SSP2-4.5` -  tasavg.Historical,
+         "X.2" =  `tasmax.SSP2-4.5` -  tasmax.Historical,
+         "P.2" =      `pr.SSP2-4.5` -      pr.Historical,
+         "N.3" =  `tasmin.SSP3-7.0` -  tasmin.Historical,
+         "A.3" =  `tasavg.SSP3-7.0` -  tasavg.Historical,
+         "X.3" =  `tasmax.SSP3-7.0` -  tasmax.Historical,
+         "P.3" =      `pr.SSP3-7.0` -      pr.Historical,
+         "N.4" =  `tasmin.SSP5-8.5` -  tasmin.Historical,
+         "A.4" =  `tasavg.SSP5-8.5` -  tasavg.Historical,
+         "X.4" =  `tasmax.SSP5-8.5` -  tasmax.Historical,
+         "P.4" =      `pr.SSP5-8.5` -      pr.Historical)   %>%
+  select( -c(  `tasmin.SSP2-4.5`,
+               `tasmax.SSP2-4.5`,
+               `tasavg.SSP2-4.5`,
+                   `pr.SSP2-4.5`,
+               `tasmin.SSP3-7.0`,
+               `tasmax.SSP3-7.0`,
+               `tasavg.SSP3-7.0`,
+                   `pr.SSP3-7.0`,
+               `tasmin.SSP5-8.5`,
+               `tasmax.SSP5-8.5`,
+               `tasavg.SSP5-8.5`,
+                   `pr.SSP5-8.5`,
+               `tasmin.Historical`,
+               `tasmax.Historical`,
+               `tasavg.Historical`,
+                   `pr.Historical`   ) )
+
+remove(loca2_futr, wider_futr, wider_hist, loca2_hist)
+
+
+
+
+loca2_diff = pivot_longer(data          = loca2_diff,
+                          cols          = c("N.2",
+                                            "A.2",
+                                            "X.2",
+                                            "P.2",
+                                            "N.3",
+                                            "A.3",
+                                            "X.3",
+                                            "P.3",
+                                            "N.4",
+                                            "A.4",
+                                            "X.4",
+                                            "P.4"),
+                          names_pattern  = "(.).(.)",
+                          values_to      =  "Value",
+                          names_to       = c("Variable",
+                                             "Scenario"),
+                          values_drop_na = TRUE)                             %>%
+              mutate(Variable = ifelse(test = (Variable == "N"), 
+                                       yes  = "diff_tasmin", 
+                                       no   = Variable),
+                     Variable = ifelse(test = (Variable == "A"), 
+                                       yes  = "diff_tasavg", 
+                                       no   = Variable),
+                     Variable = ifelse(test = (Variable == "X"), 
+                                       yes  = "diff_tasmax", 
+                                       no   = Variable),
+                     Variable = ifelse(test = (Variable == "P"), 
+                                       yes  = "diff_pr", 
+                                       no = Variable))
+
+
+loca2_diff$Scenario = factor(x       = scenarios[as.numeric(loca2_diff$Scenario)], 
+                             levels  = scenarios, 
+                             ordered = TRUE)
+
+loca2_diff$Variable = factor(x       = loca2_diff$Variable, 
+                             levels  = c("diff_tasmin",
+                                         "diff_tasavg",
+                                         "diff_tasmax",
+                                         "diff_pr"), 
+                             ordered = TRUE)
+
+loca2_diff = pivot_wider(data        = loca2_diff,
+                         values_from =    "Value",
+                         names_from  = "Variable")                           %>%
+             select(c(Period,
+                      Scenario,
+                      Model,
+                      Month,
+                      lon,
+                      lat,
+                      diff_tasmin,
+                      diff_tasavg,
+                      diff_tasmax,
+                      diff_pr))
+
+
+
+save("loca2_diff" = loca2_diff,
+     file         = cliped_diff_file,
+     compress     = "gzip")
+
+```
+
+```{r}
+
+loca2_ens_diff = loca2_diff                                                  %>%
+  group_by(Period,
+           Scenario,
+           Month,
+           lon,
+           lat)                                                          %>%
+     summarize("ens_diff_tasmin" = mean(diff_tasmin, na.rm= TRUE),
+               "ens_diff_tasavg" = mean(diff_tasavg, na.rm = TRUE),
+               "ens_diff_tasmax" = mean(diff_tasmax, na.rm = TRUE),
+               "ens_diff_pr"     = mean(diff_pr))  %>%
+  ungroup()
+
+
+
+save("loca2_ens_diff" = loca2_ens_diff,
+     file             = cliped_ens_file,
+     compress         = "gzip") 
+```
+
+
+```{r}
+ggplot(data = loca2_ens_diff %>% filter(Period == '(2036-2065)-(1976-2005)')) +
+  theme_bw() + 
+  aes(x     = ens_diff_tasavg,
+      color = Scenario)   +
+  ggtitle(label = unique(loca2_ens_diff$Period)) +
+  facet_wrap(~Month) +
+  scale_color_manual(values = scenario_color) +
+  geom_density()
+
+ggplot(data = loca2_ens_diff %>% filter(Period != '(2036-2065)-(1976-2005)')) +
+  theme_bw() + 
+  ggtitle(label = unique(loca2_ens_diff$Period)) +
+  aes(x     = ens_diff_tasavg,
+      color = Scenario)   +
+  facet_wrap(~Month) +
+  scale_color_manual(values = scenario_color) +
+  geom_density()
+```
+
+
+```{r}
+
+range = quantile(abs(loca2_ens_diff$ens_diff_pr), prob = 0.975, na.rm = TRUE) 
+
+ggplot(data = loca2_ens_diff %>% filter(Period == '(1976-2005)-(2036-2065)')) +
+  theme_bw() + 
+  aes(x     = ens_diff_pr,
+      color = Scenario)   +
+  facet_wrap(~Month) +
+  ggtitle(label = unique(loca2_ens_diff$Period)) +
+  xlim(-range, +range) + 
+  scale_color_manual(values = scenario_color) +
+  geom_density()
+
+ggplot(data = loca2_ens_diff %>% filter(Period != '(1976-2005)-(2036-2065)')) +
+  theme_bw() + 
+  aes(x     = ens_diff_pr,
+      color = Scenario)   +
+  facet_wrap(~Month) +
+  ggtitle(label = unique(loca2_ens_diff$Period)) +
+  xlim(-range, +range) + 
+  scale_color_manual(values = scenario_color) +
+  geom_density()
+```

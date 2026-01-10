@@ -1,0 +1,316 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(package = "tidyverse")
+library(package = "tidyverse")
+library(package = "tidync")
+library(package = "ncdf4")
+library(package = "ncmeta")
+library(package = "usmap")
+library(package = "showtext")
+library(package = "sf")
+
+font_add_google("Open Sans", family = "OpenSans")
+
+
+
+
+
+us_states = map_data(map = "state")
+counties  = map_data(map = "county")
+
+selected_variable = "temperature"
+
+```
+
+```{r}
+
+basins_file = "./shapefile/aquaclim.shp"
+
+basins_poly = st_read(basins_file) 
+
+#basins_poly <- st_as_sf(basins_poly)
+
+your_sf_object <- st_as_sf(basins_poly, coords = c("lon", "lat"), crs = 4326)
+
+### Set CRS to WGS84
+#basins_poly <- st_transform(basins_poly, crs = 4326)
+
+
+ggplot() +
+  geom_sf(data = your_sf_object)+
+  geom_polygon(data    = us_states,
+               mapping = aes(x     =   long, 
+                             y     =    lat,
+                             group =  group),
+               fill    = NA, 
+               size    = 0.2, 
+              color   = "#002554")  +
+  geom_polygon(data    = counties,
+               mapping = aes(x     =   long, 
+                             y     =    lat,
+                             group =  group),
+               size    = 0.1, 
+               fill    = NA, 
+               color   = "#002554") 
+```
+
+```{r}
+
+filename = "./LOCA2_Running_Ens_Diff_Hist_Mid_End_Century_SD.RData"
+
+load(file = filename, verbose=TRUE)
+
+
+scenarios = levels(loca2_ens_diff$Scenario)
+periods   = levels(loca2_ens_diff$Period)
+
+min_lon   = min(loca2_ens_diff$lon)
+max_lon   = max(loca2_ens_diff$lon)
+
+min_lat   = min(loca2_ens_diff$lat)
+max_lat   = max(loca2_ens_diff$lat)
+
+
+extremes = loca2_ens_diff %>%
+  summarize(tasmax_max = max(x = abs(ens_diff_tasmax),      na.rm = TRUE),
+            tasavg_max = max(x = abs(ens_diff_tasavg),      na.rm = TRUE),
+            tasmin_max = max(x = abs(ens_diff_tasmin),      na.rm = TRUE),
+            pr_max     = max(x = abs(ens_diff_pr),          na.rm = TRUE),
+            tasmax_97  = quantile(x = abs(ens_diff_tasmax), na.rm = TRUE, probs = .99),
+            tasavg_97  = quantile(x = abs(ens_diff_tasavg), na.rm = TRUE, probs = .99),
+            tasmin_97  = quantile(x = abs(ens_diff_tasmin), na.rm = TRUE, probs = .99),
+            pr_97      = quantile(x = abs(ens_diff_pr),     na.rm = TRUE, probs = .99))
+  
+extremes
+```
+
+```{r}
+
+  
+
+```
+
+```{r}
+for (per in periods) {
+for (scen in scenarios[2:4]) {
+  
+  limits_plot = extremes$tasavg_97
+
+  ensavg_palette  = "Spectral"
+  ensavg_direction = 1
+  anom_palette    = "RdBu"
+  anom_direction   = -1
+  
+plot_df = loca2_ens_diff %>% 
+  filter(Scenario == scen) %>%
+  filter(Period   ==   per) %>%
+  mutate(ens_diff_tasavg = ifelse(test = (ens_diff_tasavg<=-limits_plot), 
+                                  yes  = -limits_plot,
+                                  no   = ens_diff_tasavg)) %>%
+  mutate(ens_diff_tasavg = ifelse(test = (ens_diff_tasavg>=limits_plot), 
+                                  yes  = limits_plot,
+                                  no   = ens_diff_tasavg)) %>%
+  dplyr::select(Scenario,
+         Period,
+         lon,
+         lat,
+         Month,
+         ens_diff_tasavg)
+
+
+
+var_name    = "Monthly Mean Temperatures"
+units_name  = "deg C"
+scen_name   = unique(plot_df$Scenario)
+period_name = unique(plot_df$Period)
+
+  
+
+
+# RCP 4.5
+temp_plot = ggplot(data = plot_df ) +
+  
+  aes(x    = lon, 
+      y    = lat, 
+      fill = ens_diff_tasavg) +
+  
+  theme_bw() +
+  
+  theme(strip.background  = element_rect(fill=NA, colour=NA),
+        strip.text        = element_text(colour = "#002554", family = "OpenSans"),
+        panel.border      = element_rect(colour = NA)) +
+  
+  theme(legend.title      = element_text(colour = "#002554", family = "OpenSans"),
+        legend.text       = element_text(colour = "#002554", family = "OpenSans"),
+        legend.text.align = "1") +
+  theme(plot.title        = element_text(colour = "#002554", family = "OpenSans"),
+        plot.subtitle     = element_text(colour = "#002554", family = "OpenSans"),
+        plot.caption      = element_text(colour = "#002554", family = "OpenSans")) +
+  theme(axis.title.x      = element_blank(),
+        axis.title.y      = element_blank(),
+        axis.text.x       = element_blank(),
+        axis.text.y       = element_blank(),
+        axis.ticks.x      = element_blank(),
+        axis.ticks.y      = element_blank(),
+        axis.line         = element_blank()) +
+  
+  
+  
+  facet_wrap(facets = "Month") +
+  labs(title    = "CMIP6 LOCA Ensembles",
+       subtitle =  str_c(var_name,
+                         "; ",
+                         scen_name,
+                         " ",
+                         period_name,
+                         sep = ""),
+       caption = "CMIP6 LOCA2 Ensemble Means",
+       fill    = units_name) +
+  xlab(label = "Longitude") +
+  ylab(label = "Latitude") +
+  coord_fixed(xlim    = c(min_lon, max_lon),
+              ylim    = c(min_lat, max_lat) ,
+              ratio   = 1/cos(pi/180 * mean(plot_df$lat)) ) +
+  scale_fill_distiller(palette    = anom_palette,
+                       space      = "Lab",
+                       direction  = anom_direction,
+                       na.value   = "white",
+                       guide      = "colourbar",
+                       aesthetics = "fill",
+                       limits     = c(-limits_plot, limits_plot)) +
+  geom_raster()  +
+  geom_polygon(data    = us_states,
+               mapping = aes(x     =   long, 
+                             y     =    lat,
+                             group =  group),
+               fill    = NA, 
+               size    = 0.2, 
+              color   = "#002554")  +
+  geom_polygon(data    = counties,
+               mapping = aes(x     =   long, 
+                             y     =    lat,
+                             group =  group),
+               size    = 0.1, 
+               fill    = NA, 
+               color   = "#002554") 
+
+
+
+print(str_c("PREC_SD__",scen, "__", per ,".png",sep = ""))
+print(temp_plot)
+}
+}
+```
+
+```{r}
+for (per in periods) {
+for (scen in scenarios[2:4]) {
+  
+limits_plot = extremes$pr_97
+
+  ensavg_palette   = "YlGnBu"
+  ensavg_direction = 1
+  anom_palette     = "BrBG"
+  anom_direction   = 1 
+
+plot_df = loca2_ens_diff %>% 
+  filter(Scenario == scen) %>%
+  filter(Period   ==   per) %>%
+  mutate(ens_diff_pr = ifelse(test = (ens_diff_pr<=-limits_plot), 
+                                  yes  = -limits_plot,
+                                  no   = ens_diff_pr)) %>%
+  mutate(ens_diff_pr = ifelse(test = (ens_diff_pr>=limits_plot), 
+                                  yes  = limits_plot,
+                                  no   = ens_diff_pr)) %>%
+  dplyr::select(Scenario,
+         Period,
+         lon,
+         lat,
+         Month,
+         ens_diff_pr)
+
+var_name    = "Monthly Precipitation"
+units_name  = "mm"
+scen_name   = unique(plot_df$Scenario)
+period_name = unique(plot_df$Period)
+
+  
+
+
+# RCP 4.5
+prec_plot = ggplot(data = plot_df ) +
+  
+  aes(x    = lon, 
+      y    = lat, 
+      fill = ens_diff_pr) +
+  
+  theme_bw() +
+  
+  theme(strip.background  = element_rect(fill=NA, colour=NA),
+        strip.text        = element_text(colour = "#002554", family = "OpenSans"),
+        panel.border      = element_rect(colour = NA)) +
+  
+  theme(legend.title      = element_text(colour = "#002554", family = "OpenSans"),
+        legend.text       = element_text(colour = "#002554", family = "OpenSans"),
+        legend.text.align = "1") +
+  theme(plot.title        = element_text(colour = "#002554", family = "OpenSans"),
+        plot.subtitle     = element_text(colour = "#002554", family = "OpenSans"),
+        plot.caption      = element_text(colour = "#002554", family = "OpenSans")) +
+  theme(axis.title.x      = element_blank(),
+        axis.title.y      = element_blank(),
+        axis.text.x       = element_blank(),
+        axis.text.y       = element_blank(),
+        axis.ticks.x      = element_blank(),
+        axis.ticks.y      = element_blank(),
+        axis.line         = element_blank()) +
+  
+  
+  
+  facet_wrap(facets = "Month") +
+  labs(title    = "CMIP6 LOCA Ensembles",
+       subtitle =  str_c(var_name,
+                         "; ",
+                         scen,
+                         " ",
+                         per,
+                         sep = ""),
+       caption = "CMIP6 LOCA2 Ensemble Means",
+       fill    = units_name) +
+  xlab(label = "Longitude") +
+  ylab(label = "Latitude") +
+  coord_fixed(xlim    = c(min_lon, max_lon),
+              ylim    = c(min_lat, max_lat) ,
+              ratio   = 1/cos(pi/180 * mean(plot_df$lat)) ) +
+  scale_fill_distiller(palette    = anom_palette,
+                       space      = "Lab",
+                       direction  = anom_direction,
+                       na.value   = "white",
+                       guide      = "colourbar",
+                       aesthetics = "fill",
+                       limits     = c(-limits_plot, limits_plot)) +
+  geom_raster()  +
+  geom_polygon(data    = us_states,
+               mapping = aes(x     =   long, 
+                             y     =    lat,
+                             group =  group),
+               fill    = NA, 
+               size    = 0.2, 
+              color   = "#002554")  +
+  geom_polygon(data    = counties,
+               mapping = aes(x     =   long, 
+                             y     =    lat,
+                             group =  group),
+               size    = 0.1, 
+               fill    = NA, 
+               color   = "#002554") 
+
+print(str_c("TAVG_SD__",scen, "__", per ,".png",sep = ""))
+print(prec_plot)
+}
+}
+```

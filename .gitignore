@@ -161,3 +161,5 @@ LOCA2-CONUS-MONTHLY_MEAN___tasmax___GFDL-ESM4.r1i1p1f1___historical.nc
 *.nc
 .Rhistory
 .RData
+*.RData
+*.png
